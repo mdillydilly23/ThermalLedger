@@ -1,0 +1,5 @@
+# Dependencies for scripts/download_sentinel5p.py and scripts/download_era5.py
+# Install with: pip install -r requirements-scripts.txt
+requests>=2.32.0
+python-dotenv>=1.0.0
+cdsapi>=0.7.0

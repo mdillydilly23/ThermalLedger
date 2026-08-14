@@ -1,0 +1,16 @@
+facility_id,facility_name,latitude,longitude,sector,country,operator,capacity_mw,reported_ch4_kt
+EU-ETS-DE-001,Wilhelmshaven Power Plant,53.5251,8.1432,coal,DE,Uniper SE,800.0,12.4
+EU-ETS-NL-001,Rotterdam Refinery Complex,51.9225,4.4792,oil_gas,NL,Shell Nederland,1200.0,38.7
+EU-ETS-PL-001,Bełchatów Power Station,51.2642,19.3306,coal,PL,PGE Polska Grupa Energetyczna,5102.0,87.2
+EU-ETS-UK-001,Grangemouth Petrochemical Complex,56.0191,-3.6972,oil_gas,UK,INEOS,320.0,21.1
+EU-ETS-FR-001,Fos-sur-Mer Steel Works,43.4372,4.9458,steel,FR,ArcelorMittal France,0.0,5.3
+EU-ETS-IT-001,Porto Marghera Industrial Zone,45.4564,12.2781,oil_gas,IT,ENI S.p.A.,450.0,18.9
+EU-ETS-ES-001,Puertollano Refinery,38.6861,-4.1078,oil_gas,ES,Repsol,200.0,9.6
+EU-ETS-RO-001,Ploiești Oil Fields,44.9443,26.0247,oil_gas,RO,OMV Petrom,0.0,44.2
+EU-ETS-CZ-001,Počerady Power Plant,50.4267,13.5328,coal,CZ,Sev.En Energy,1000.0,22.8
+EU-ETS-HU-001,Mátra Power Plant,47.8819,19.9667,coal,HU,Mátrai Erőmű Zrt,952.0,19.1
+EPA-GHGRP-TX-001,Permian Basin Compressor Station,31.8457,-102.3676,oil_gas,US,Pioneer Natural Resources,0.0,61.5
+EPA-GHGRP-PA-001,Marcellus Shale Processing Plant,41.2033,-77.1945,oil_gas,US,EQT Corporation,0.0,29.3
+EPA-GHGRP-WY-001,Jonah Gas Field Processing,42.7559,-109.8265,oil_gas,US,Jonah Energy LLC,0.0,35.8
+EPA-GHGRP-LA-001,Lake Charles LNG Terminal,30.2266,-93.2174,oil_gas,US,Venture Global LNG,0.0,8.1
+EPA-GHGRP-KY-001,Eastern Kentucky Coal Mine,37.3522,-83.1527,coal,US,CONSOL Energy,0.0,14.7
