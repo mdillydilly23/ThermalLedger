@@ -20,4 +20,4 @@ COPY ml/cache/ ./cache/
 COPY shared/ ./shared/
 
 EXPOSE 8001
-CMD ["uv", "run", "--no-sync", "fastapi", "run", "app/main.py", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["uv", "run", "--no-sync", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]

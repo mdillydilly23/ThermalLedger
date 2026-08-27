@@ -103,7 +103,7 @@ function EVSDetail({ score }: { score: EVSScore }) {
       {/* Blockchain anchor */}
       <div style={{ fontSize: '11px', color: '#475569', borderTop: '1px solid #2d3148', paddingTop: '10px' }}>
         {score.blockchain_tx_id
-          ? <>Anchored: <span style={{ color: '#60a5fa', wordBreak: 'break-all' }}>{score.blockchain_tx_id}</span></>
+          ? <>{score.blockchain_tx_id.startsWith('local_') ? 'Local audit anchor: ' : 'Fabric anchor: '}<span style={{ color: '#60a5fa', wordBreak: 'break-all' }}>{score.blockchain_tx_id}</span></>
           : 'Not yet anchored to Hyperledger Fabric.'}
       </div>
     </div>
@@ -114,7 +114,7 @@ function VerificationReport({ score }: { score: EVSScore }) {
   const [taskId, setTaskId] = useState<string | null>(null)
   const [requestError, setRequestError] = useState<string | null>(null)
   const task = useTask(taskId)
-  const result = task?.result as { report_html?: string; cached?: boolean } | null
+  const result = task?.result as { report_html?: string; cached?: boolean; blockchain_tx_id?: string; audit_mode?: string } | null
 
   const requestReport = async () => {
     setRequestError(null)
@@ -139,7 +139,7 @@ function VerificationReport({ score }: { score: EVSScore }) {
             onClick={requestReport}
             style={reportButtonStyle}
           >
-            Generate cached verification report
+            Generate verification report
           </button>
         )}
         {requestError && <p style={{ marginTop: '8px', color: '#f87171', fontSize: '11px' }}>{requestError}</p>}
@@ -153,6 +153,12 @@ function VerificationReport({ score }: { score: EVSScore }) {
             <p style={{ ...reportStatusStyle, color: '#4ade80' }}>
               {result.cached ? 'Cached demonstration report ready.' : 'Verification report ready.'}
             </p>
+            {result.blockchain_tx_id && (
+              <p style={reportStatusStyle}>
+                {result.audit_mode === 'local_audit_fallback' ? 'Local audit fallback: ' : 'Audit anchor: '}
+                <span style={{ color: '#60a5fa', wordBreak: 'break-all' }}>{result.blockchain_tx_id}</span>
+              </p>
+            )}
             <iframe
               title={`Verification report for ${score.facility_name}`}
               srcDoc={result.report_html}

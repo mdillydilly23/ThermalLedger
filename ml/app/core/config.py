@@ -11,7 +11,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class MLSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=(".env", "../.env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     # ADR-002
     data_source: Literal["local", "remote"] = "local"

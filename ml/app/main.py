@@ -6,7 +6,8 @@ ADR-006: GRANITE_MODE toggle (cached vs live Granite calls).
 """
 
 from fastapi import FastAPI
-from app.api.routes import score, granite, plume_model
+
+from app.api.routes import granite, plume_model, score
 
 app = FastAPI(
     title="ThermalLedger ML Service",

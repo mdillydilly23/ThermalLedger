@@ -197,7 +197,13 @@ cython_debug/
 # Large local inputs; small deterministic fixtures in data/ remain committed.
 data/raw/
 data/esg_pdfs/
+data/uploads/
+data/audit/
+data/processed/plumes/
 uploads/
+
+# Frontend dependencies
+node_modules/
 
 # Visual Studio Code
 #   Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 

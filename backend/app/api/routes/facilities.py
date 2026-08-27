@@ -5,8 +5,9 @@ ADR-004: responses typed as Pydantic models.
 """
 
 from fastapi import APIRouter, HTTPException
-from app.models.api_models import FacilityListResponse, FacilitySummary, EVSScore
-from app.services.parquet_store import get_facility_summaries, get_evs_score
+
+from app.models.api_models import EVSScore, FacilityListResponse, FacilitySummary
+from app.services.parquet_store import get_evs_score, get_facility_summaries
 
 router = APIRouter()
 

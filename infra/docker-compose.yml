@@ -36,13 +36,15 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ../data:/app/data:ro         # Backend only reads demo/satellite data
+      - ../data:/app/data            # Uploads, live EVS, plumes, and audit fallback are persisted here
       - ../ml/cache:/app/ml_cache:ro
     env_file: ../.env
     environment:
       - DATA_DIR=/app/data
       - ML_SERVICE_URL=http://ml:8001
       - REPORTS_CACHE_DIR=/app/ml_cache/reports
+      - UPLOADS_DIR=/app/data/uploads/esg
+      - AUDIT_DIR=/app/data/audit
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
     depends_on:
@@ -70,6 +72,8 @@ services:
     environment:
       - DATA_DIR=/app/data
       - ML_SERVICE_URL=http://ml:8001
+      - UPLOADS_DIR=/app/data/uploads/esg
+      - AUDIT_DIR=/app/data/audit
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
     depends_on:

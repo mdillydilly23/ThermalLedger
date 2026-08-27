@@ -4,12 +4,13 @@ ADR-002: Returns an empty FeatureCollection when no processed raster exists loca
          the frontend HeatmapLayer degrades gracefully with zero points.
 """
 
-from datetime import date
 import math
+from datetime import date
 
 from fastapi import APIRouter, HTTPException
+
 from app.models.api_models import PlumeGeoJSONResponse
-from app.services.parquet_store import get_evs_score
+from app.services.parquet_store import get_evs_score, get_processed_plume
 
 router = APIRouter()
 
@@ -57,8 +58,20 @@ async def get_plume_geojson(facility_id: str, observation_date: date) -> PlumeGe
     overlay based on the committed fixture score.  Real satellite-processing
     mode will replace it with a cached raster-derived GeoJSON collection.
     """
+    processed = get_processed_plume(facility_id, observation_date.isoformat())
+    if processed is not None:
+        return PlumeGeoJSONResponse(
+            facility_id=facility_id,
+            observation_date=processed.get("observation_date", observation_date),
+            geojson=processed["geojson"],
+            source=processed.get("source", "sentinel5p_live_attribution"),
+            cached=False,
+        )
+
     return PlumeGeoJSONResponse(
         facility_id=facility_id,
         observation_date=observation_date,
         geojson=_demo_plume(facility_id),
+        source="deterministic_demo_fixture",
+        cached=True,
     )

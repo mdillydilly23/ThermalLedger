@@ -1,7 +1,11 @@
 """Granite routes — ESG parsing and report generation."""
 
-from fastapi import APIRouter, UploadFile, File
+from pathlib import Path
+from tempfile import NamedTemporaryFile
+
+from fastapi import APIRouter, File, UploadFile
 from pydantic import BaseModel
+
 from app.services.granite import GraniteClient
 
 router = APIRouter()
@@ -19,13 +23,16 @@ async def parse_cached_esg(req: CachedParseRequest):
 
 
 @router.post("/parse")
-async def parse_esg(file: UploadFile = File(...)):
+async def parse_esg(file: UploadFile = File(...)):  # noqa: B008
     """Parse an ESG PDF and return structured emission claims."""
     content = await file.read()
-    tmp_path = f"/tmp/{file.filename}"
-    with open(tmp_path, "wb") as f:
-        f.write(content)
-    return await _client.parse_esg_pdf(tmp_path, file.filename or "upload.pdf")
+    with NamedTemporaryFile(delete=False, suffix=".pdf") as handle:
+        handle.write(content)
+        tmp_path = Path(handle.name)
+    try:
+        return await _client.parse_esg_pdf(str(tmp_path), file.filename or "upload.pdf")
+    finally:
+        tmp_path.unlink(missing_ok=True)
 
 
 class ReportGenRequest(BaseModel):

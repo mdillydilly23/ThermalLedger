@@ -18,6 +18,7 @@ celery_app = Celery(
         "app.tasks.scoring",
         "app.tasks.reports",
         "app.tasks.esg",
+        "app.tasks.verification",
         # Phase 1 — data ingestion tasks
         "app.tasks.sentinel",
         "app.tasks.era5",

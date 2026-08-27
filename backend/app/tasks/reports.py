@@ -6,6 +6,8 @@ import httpx
 
 from app.core.celery_app import celery_app
 from app.core.config import settings
+from app.models.api_models import ReportResult
+from app.services.audit import anchor_payload
 from app.services.parquet_store import get_evs_score
 
 
@@ -16,10 +18,7 @@ def generate_verification_report(
     observation_start: str,
     observation_end: str,
 ) -> dict:
-    """Generate or retrieve the cached report using the selected facility EVS."""
-    if settings.granite_mode != "cached":
-        raise RuntimeError("Live report generation is not enabled in this demo.")
-
+    """Generate or retrieve a verification report using the selected facility EVS."""
     evs_data = get_evs_score(facility_id)
     if evs_data is None:
         raise ValueError(f"Facility '{facility_id}' not found.")
@@ -28,11 +27,14 @@ def generate_verification_report(
     response = httpx.post(
         f"{settings.ml_service_url.rstrip('/')}/granite/report",
         json={"facility_id": facility_id, "evs_data": evs_data},
-        timeout=30,
+        timeout=120,
     )
     response.raise_for_status()
     result = response.json()
     result["observation_start"] = observation_start
     result["observation_end"] = observation_end
-    self.update_state(state="PROGRESS", meta={"stage": "Finalizing cached verification report..."})
-    return result
+    anchor = anchor_payload("verification_report", result)
+    result["blockchain_tx_id"] = anchor["anchor_id"]
+    result["audit_mode"] = anchor["mode"]
+    self.update_state(state="PROGRESS", meta={"stage": "Finalizing verification report..."})
+    return ReportResult(**result).model_dump(mode="json")

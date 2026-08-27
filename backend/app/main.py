@@ -9,19 +9,18 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import facilities, reports, esg, tasks, plume
+from app.api.routes import esg, facilities, plume, prototype, reports, tasks, verification
 from app.core.config import settings
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: validate data directory exists when DATA_SOURCE=local
-    if settings.data_source == "local":
-        if not settings.data_dir.exists():
-            raise RuntimeError(
-                f"DATA_SOURCE=local but data directory not found: {settings.data_dir}\n"
-                "Run scripts/download_sentinel5p.py and scripts/seed_facilities.py first."
-            )
+    if settings.data_source == "local" and not settings.data_dir.exists():
+        raise RuntimeError(
+            f"DATA_SOURCE=local but data directory not found: {settings.data_dir}\n"
+            "Run scripts/download_sentinel5p.py and scripts/seed_facilities.py first."
+        )
     yield
     # Shutdown: nothing to clean up
 
@@ -45,6 +44,8 @@ app.include_router(reports.router, prefix="/reports", tags=["reports"])
 app.include_router(esg.router, prefix="/esg", tags=["esg"])
 app.include_router(tasks.router, prefix="/tasks", tags=["tasks"])
 app.include_router(plume.router, prefix="/plume", tags=["plume"])
+app.include_router(prototype.router, prefix="/prototype", tags=["prototype"])
+app.include_router(verification.router, prefix="/verification", tags=["verification"])
 
 
 @app.get("/health")

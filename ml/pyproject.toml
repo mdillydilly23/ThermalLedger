@@ -9,6 +9,7 @@ dependencies = [
     "pydantic-settings>=2.2.0",
     "httpx>=0.27.0",
     "python-dotenv>=1.0.0",
+    "pypdf>=4.2.0",
     # Satellite data processing
     "xarray>=2024.2.0",
     "rioxarray>=0.15.0",

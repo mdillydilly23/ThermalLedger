@@ -7,13 +7,13 @@ ADR-003: output shape is EVSScore from shared/evs_schema.py.
 from __future__ import annotations
 
 import math
+import os
+import sys
 from datetime import date
-from typing import Optional
 
-import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../../../'))
 
-from shared.evs_schema import EVSScore, DiscrepancyFlag
+from shared.evs_schema import DiscrepancyFlag, EVSScore
 
 
 def compute_evs(
@@ -28,9 +28,9 @@ def compute_evs(
     satellite_ch4_estimate: float,
     satellite_uncertainty_low: float,
     satellite_uncertainty_high: float,
-    reported_ch4: Optional[float] = None,
-    reported_source: Optional[str] = None,
-    reported_year: Optional[int] = None,
+    reported_ch4: float | None = None,
+    reported_source: str | None = None,
+    reported_year: int | None = None,
 ) -> EVSScore:
     """
     Compute the EVS score given satellite estimate and reported value.
@@ -41,8 +41,8 @@ def compute_evs(
     """
     coverage_pct = (days_with_valid_retrievals / total_days) * 100.0
 
-    delta_pct: Optional[float] = None
-    sigma_deviation: Optional[float] = None
+    delta_pct: float | None = None
+    sigma_deviation: float | None = None
     evs: float
     flag: DiscrepancyFlag
 

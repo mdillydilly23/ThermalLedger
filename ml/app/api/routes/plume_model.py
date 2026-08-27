@@ -1,24 +1,39 @@
-"""Plume model route — Gaussian plume attribution, internal only."""
+"""Plume model route — Sentinel/ERA5 attribution, internal only."""
+
+from datetime import date
 
 from fastapi import APIRouter
 from pydantic import BaseModel
-from datetime import date
+from shared.evs_schema import EVSScore
+
+from app.services.plume_attribution import attribute_facility
 
 router = APIRouter()
 
 
 class PlumeAttributionRequest(BaseModel):
     facility_id: str
+    facility_name: str
+    latitude: float
+    longitude: float
     start: date
     end: date
+    reported_ch4: float | None = None
+    reported_source: str | None = None
+    reported_year: int | None = None
 
 
-@router.post("/attribute")
-async def attribute_plume(req: PlumeAttributionRequest):
+class PlumeAttributionResponse(BaseModel):
+    facility_id: str
+    source: str
+    method_notes: list[str]
+    score: EVSScore
+    geojson: dict
+
+
+@router.post("/attribute", response_model=PlumeAttributionResponse)
+async def attribute_plume(req: PlumeAttributionRequest) -> PlumeAttributionResponse:
     """
-    Run Gaussian plume dispersion model to attribute satellite CH4 to facility.
-    Input: facility coordinates + ERA5 wind fields from data/raw/era5/
-    Output: per-facility CH4 estimate with 95% confidence interval.
+    Attribute satellite CH4 to a facility using local Sentinel-5P and ERA5 files.
     """
-    # TODO: implement xarray raster load + scipy Gaussian plume model
-    raise NotImplementedError
+    return PlumeAttributionResponse(**attribute_facility(**req.model_dump()))

@@ -4,7 +4,14 @@
  * ADR-004: return types match Pydantic models from backend.
  */
 
-import type { EVSScore, FacilitySummary, TaskStatus } from '../types/evs'
+import type {
+  EVSScore,
+  FacilitySummary,
+  PrototypeStatus,
+  TaskStatus,
+  VerificationRunRequest,
+  VerificationRunResponse,
+} from '../types/evs'
 
 const BASE = '/api'  // proxied to backend:8000 by Vite (vite.config.ts)
 
@@ -43,6 +50,8 @@ export interface PlumeGeoJSONResponse {
   facility_id: string
   observation_date: string
   geojson: { type: 'FeatureCollection'; features: PlumePointFeature[] }
+  source: string
+  cached: boolean
 }
 
 export const fetchPlumeGeoJSON = (facilityId: string, date: string): Promise<PlumeGeoJSONResponse> =>
@@ -75,3 +84,13 @@ export const generateReport = (
 
 export const pollTask = (taskId: string): Promise<TaskStatus> =>
   get(`/tasks/${taskId}`)
+
+// ── Live prototype controls ───────────────────────────────────
+
+export const fetchPrototypeStatus = (): Promise<PrototypeStatus> =>
+  get('/prototype/status')
+
+export const startVerificationRun = (
+  request: VerificationRunRequest,
+): Promise<VerificationRunResponse> =>
+  post('/verification/runs', request)

@@ -11,13 +11,19 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=(".env", "../.env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     # ADR-002
     data_source: Literal["local", "remote"] = "local"
     data_dir: Path = Path("../data")
     granite_mode: Literal["cached", "live"] = "cached"
     reports_cache_dir: Path = Path("../ml/cache/reports")
+    uploads_dir: Path = Path("../data/uploads/esg")
+    audit_dir: Path = Path("../data/audit")
 
     # IBM watsonx.ai
     watsonx_api_key: str = ""

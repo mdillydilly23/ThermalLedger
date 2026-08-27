@@ -6,8 +6,9 @@
 import { useState } from 'react'
 import { DashboardPage } from './pages/DashboardPage'
 import { UploadPage } from './pages/UploadPage'
+import { PrototypePage } from './pages/PrototypePage'
 
-type Tab = 'dashboard' | 'upload'
+type Tab = 'dashboard' | 'upload' | 'prototype'
 
 const styles: Record<string, React.CSSProperties> = {
   shell: {
@@ -60,7 +61,7 @@ export default function App() {
         <span style={styles.logo}>ThermalLedger</span>
         <span style={styles.tag}>AI Carbon Credit Verifier</span>
         <nav style={styles.nav}>
-          {(['dashboard', 'upload'] as Tab[]).map((t) => (
+          {(['dashboard', 'upload', 'prototype'] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -70,13 +71,13 @@ export default function App() {
                 color: tab === t ? '#e2e8f0' : '#94a3b8',
               }}
             >
-              {t === 'dashboard' ? '🛰 Dashboard' : '📄 Upload ESG'}
+              {t === 'dashboard' ? '🛰 Dashboard' : t === 'upload' ? '📄 Upload ESG' : '⚙ Prototype'}
             </button>
           ))}
         </nav>
       </header>
       <div style={styles.content}>
-        {tab === 'dashboard' ? <DashboardPage /> : <UploadPage />}
+        {tab === 'dashboard' ? <DashboardPage /> : tab === 'upload' ? <UploadPage /> : <PrototypePage />}
       </div>
     </div>
   )

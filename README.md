@@ -30,7 +30,9 @@ Suggested presentation flow:
 1. Select a red or amber facility marker and explain its EVS, observation coverage, uncertainty interval, and reported comparison.
 2. Point out the labelled plume overlay, explaining that it demonstrates the review experience while raw satellite processing is being connected.
 3. Open **Upload ESG**, upload any small PDF, and show the cached structured claim returned through the asynchronous task progress UI.
-4. Return to the facility detail and choose **Generate cached verification report** to show the review-ready report view.
+4. Return to the facility detail and choose **Generate verification report** to show the review-ready report view.
+
+For the live prototype walkthrough, use [docs/demo-script.md](docs/demo-script.md).
 
 Stop the stack with `docker compose -f infra/docker-compose.yml down`.
 
@@ -42,10 +44,10 @@ Prerequisites: Python 3.11+, [uv](https://docs.astral.sh/uv/), Node 20+, npm, an
 cp .env.example .env
 
 # terminal 1 — ML service
-cd ml && uv sync && uv run fastapi dev app/main.py --port 8001
+cd ml && uv sync && uv run uvicorn app.main:app --reload --port 8001
 
 # terminal 2 — backend
-cd backend && uv sync && uv run fastapi dev app/main.py --port 8000
+cd backend && uv sync && uv run uvicorn app.main:app --reload --port 8000
 
 # terminal 3 — worker
 cd backend && uv run celery -A app.core.celery_app worker --loglevel=info
@@ -60,9 +62,11 @@ The native worker expects Redis at `redis://localhost:6379`; set the usual `CELE
 
 Small deterministic fixtures are committed under `data/fixtures/` and `data/processed/`. Large inputs are intentionally excluded from Git; see [data/README.md](data/README.md) for the expected local layout and bootstrap commands.
 
-## Real-data phase
+## Live prototype phase
 
-The repository includes resilient Sentinel-5P and ERA5 download scripts, but the raster QA, wind-aware plume attribution, and satellite-derived EVS calculation still need implementation before this can be described as a live satellite verifier. `GRANITE_MODE=live` and the IBM/OpenPages/Fabric integration settings are also future integration points, not part of the deterministic panel demo.
+The repository includes a live prototype path for Sentinel-5P/ERA5 ingestion, wind-aware plume attribution, EVS Parquet persistence, and watsonx Granite parsing/report generation. Use the **Prototype** tab to inspect readiness, start verification runs, and see whether the app is using live outputs or deterministic fallbacks.
+
+OpenPages and Hyperledger Fabric are exposed as pluggable integration points. Until a tested live client is added, the prototype writes explicit local audit fallback records under `data/audit/`.
 
 ## Repository layout
 

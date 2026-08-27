@@ -89,6 +89,7 @@ function StatusRow({
 
 function ParseResult({ result }: { result: Record<string, unknown> }) {
   const claims = result?.claims as unknown[] | undefined
+  const matches = result?.matches as Record<string, unknown>[] | undefined
   if (!claims?.length) return null
 
   return (
@@ -111,6 +112,22 @@ function ParseResult({ result }: { result: Record<string, unknown> }) {
           </span>
         </div>
       ))}
+      {matches?.length ? (
+        <div style={{ marginTop: '10px' }}>
+          <div style={{ fontSize: '11px', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
+            Facility Matches
+          </div>
+          {matches.map((match) => (
+            <div key={String(match.facility_id)} style={{ fontSize: '12px', color: '#94a3b8', paddingBottom: '6px' }}>
+              <strong style={{ color: '#e2e8f0' }}>{String(match.facility_name ?? '—')}</strong>{' '}
+              <span style={{ color: '#60a5fa' }}>
+                EVS {match.latest_evs != null ? Number(match.latest_evs).toFixed(1) : '—'}
+              </span>{' '}
+              <span style={{ color: '#64748b' }}>{String(match.latest_flag ?? 'unscored')}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   )
 }

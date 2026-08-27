@@ -5,8 +5,10 @@
  */
 
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { ESGDropzone } from '../components/upload/ESGDropzone'
 import { TaskProgress } from '../components/upload/TaskProgress'
+import { fetchPrototypeStatus } from '../lib/api'
 
 interface UploadState {
   taskId: string
@@ -15,6 +17,10 @@ interface UploadState {
 
 export function UploadPage() {
   const [upload, setUpload] = useState<UploadState | null>(null)
+  const { data: status } = useQuery({
+    queryKey: ['prototype-status'],
+    queryFn: fetchPrototypeStatus,
+  })
 
   const handleUploadStart = (taskId: string, filename: string) => {
     setUpload({ taskId, filename })
@@ -37,6 +43,21 @@ export function UploadPage() {
           Upload a corporate ESG PDF. IBM Granite will extract Scope 1 CH₄ emission
           claims which are then cross-referenced against satellite observations.
         </p>
+        {status && (
+          <div style={{
+            display: 'inline-flex',
+            marginTop: '10px',
+            border: '1px solid #2d3148',
+            borderRadius: '999px',
+            padding: '4px 8px',
+            color: status.granite_mode === 'live' ? '#86efac' : '#fcd34d',
+            background: status.granite_mode === 'live' ? '#052e16' : '#451a03',
+            fontSize: '11px',
+            textTransform: 'capitalize',
+          }}>
+            Granite mode: {status.granite_mode}
+          </div>
+        )}
       </div>
 
       <ESGDropzone onUploadStart={handleUploadStart} />

@@ -28,6 +28,9 @@ export function DashboardPage() {
     position: feature.geometry.coordinates,
     weight: feature.properties.weight,
   }))
+  const plumeSource = plumeQuery.data?.cached === false
+    ? `${plumeQuery.data.source.replace(/_/g, ' ')} (${plumeQuery.data.observation_date})`
+    : 'deterministic demo fixture (not a live satellite retrieval)'
 
   return (
     <div style={{ display: 'flex', height: '100%' }}>
@@ -46,7 +49,7 @@ export function DashboardPage() {
           border: '1px solid #2d3148', color: '#94a3b8', fontSize: '11px',
         }}>
           {selectedId
-            ? 'Plume overlay: deterministic demo fixture (not a live satellite retrieval)'
+            ? `Plume overlay: ${plumeSource}`
             : 'Select a facility to view its verification overlay'}
         </div>
       </div>

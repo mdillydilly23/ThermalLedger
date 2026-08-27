@@ -7,9 +7,10 @@ ADR-006: Granite report cache — check cache before dispatching Celery task.
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
-from app.models.api_models import ReportRequest, ReportResponse, ReportResult
+
 from app.core.celery_app import celery_app
 from app.core.config import settings
+from app.models.api_models import ReportRequest, ReportResponse, ReportResult
 
 router = APIRouter()
 
