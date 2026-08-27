@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     # ADR-002
     data_source: Literal["local", "remote"] = "local"
     data_dir: Path = Path("../data")
+    granite_mode: Literal["cached", "live"] = "cached"
+    reports_cache_dir: Path = Path("../ml/cache/reports")
 
     # IBM watsonx.ai
     watsonx_api_key: str = ""

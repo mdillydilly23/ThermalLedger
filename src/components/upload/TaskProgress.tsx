@@ -40,7 +40,11 @@ export function TaskProgress({ taskId, label }: Props) {
 
   // In progress
   const currentStage = task.progress_stage ?? 'Processing...'
-  const currentIndex = STEPS.findIndex((s) => s.stage === currentStage)
+  // Worker tasks can report a more specific stage than the compact demo UI.
+  // Treat that as the middle extraction step rather than rendering no active
+  // step at all.
+  const matchedStep = STEPS.findIndex((s) => s.stage === currentStage)
+  const currentIndex = matchedStep === -1 ? 1 : matchedStep
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

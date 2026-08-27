@@ -57,7 +57,7 @@ export interface FacilitySummary {
 
 export interface TaskStatus {
   task_id: string
-  status: 'PENDING' | 'STARTED' | 'SUCCESS' | 'FAILURE'
+  status: 'PENDING' | 'STARTED' | 'PROGRESS' | 'SUCCESS' | 'FAILURE'
   progress_stage: string | null
   result: unknown | null
   error: string | null

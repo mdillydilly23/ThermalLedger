@@ -4,6 +4,8 @@ ADR-004: Pydantic request/response models.
 ADR-006: Granite report cache — check cache before dispatching Celery task.
 """
 
+from pathlib import Path
+
 from fastapi import APIRouter, HTTPException
 from app.models.api_models import ReportRequest, ReportResponse, ReportResult
 from app.core.celery_app import celery_app
@@ -26,7 +28,6 @@ async def generate_report(req: ReportRequest) -> ReportResponse:
             "facility_id": req.facility_id,
             "observation_start": req.observation_start.isoformat(),
             "observation_end": req.observation_end.isoformat(),
-            "granite_mode": settings.data_source,  # mirrors DATA_SOURCE logic
         },
     )
     return ReportResponse(task_id=task.id, status="processing")
@@ -35,5 +36,19 @@ async def generate_report(req: ReportRequest) -> ReportResponse:
 @router.get("/{report_id}", response_model=ReportResult)
 async def get_report(report_id: str) -> ReportResult:
     """Fetch a previously generated report by ID."""
-    # TODO: load from ml/cache/reports/ or database
-    raise NotImplementedError
+    if not report_id.startswith("cached_"):
+        raise HTTPException(status_code=404, detail="Report not found.")
+
+    facility_id = Path(report_id.removeprefix("cached_")).name
+    report_file = settings.reports_cache_dir / f"{facility_id}_report.html"
+    if not report_file.exists():
+        report_file = settings.reports_cache_dir / "hero_facility_report.html"
+    if not report_file.exists():
+        raise HTTPException(status_code=404, detail="Cached report asset not found.")
+
+    return ReportResult(
+        report_id=report_id,
+        facility_id=facility_id,
+        report_html=report_file.read_text(encoding="utf-8"),
+        cached=True,
+    )

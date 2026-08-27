@@ -4,8 +4,10 @@
  * ADR-003: all fields from the shared EVSScore schema.
  */
 
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { fetchFacilityDetail } from '../../lib/api'
+import { fetchFacilityDetail, generateReport } from '../../lib/api'
+import { useTask } from '../../hooks/useTask'
 import type { EVSScore, DiscrepancyFlag } from '../../types/evs'
 
 interface Props {
@@ -96,6 +98,8 @@ function EVSDetail({ score }: { score: EVSScore }) {
         />
       </Section>
 
+      <VerificationReport score={score} />
+
       {/* Blockchain anchor */}
       <div style={{ fontSize: '11px', color: '#475569', borderTop: '1px solid #2d3148', paddingTop: '10px' }}>
         {score.blockchain_tx_id
@@ -105,6 +109,69 @@ function EVSDetail({ score }: { score: EVSScore }) {
     </div>
   )
 }
+
+function VerificationReport({ score }: { score: EVSScore }) {
+  const [taskId, setTaskId] = useState<string | null>(null)
+  const [requestError, setRequestError] = useState<string | null>(null)
+  const task = useTask(taskId)
+  const result = task?.result as { report_html?: string; cached?: boolean } | null
+
+  const requestReport = async () => {
+    setRequestError(null)
+    try {
+      const response = await generateReport(
+        score.facility_id,
+        score.observation_start,
+        score.observation_end,
+      )
+      setTaskId(response.task_id)
+    } catch (error: unknown) {
+      setRequestError(error instanceof Error ? error.message : 'Unable to start report generation.')
+    }
+  }
+
+  return (
+    <Section title="Verification Report">
+      <div style={{ padding: '10px' }}>
+        {!taskId && (
+          <button
+            type="button"
+            onClick={requestReport}
+            style={reportButtonStyle}
+          >
+            Generate cached verification report
+          </button>
+        )}
+        {requestError && <p style={{ marginTop: '8px', color: '#f87171', fontSize: '11px' }}>{requestError}</p>}
+        {taskId && !task && <p style={reportStatusStyle}>Queueing report…</p>}
+        {task && task.status !== 'SUCCESS' && task.status !== 'FAILURE' && (
+          <p style={reportStatusStyle}>{task.progress_stage ?? 'Generating report…'}</p>
+        )}
+        {task?.status === 'FAILURE' && <p style={{ ...reportStatusStyle, color: '#f87171' }}>{task.error ?? 'Report generation failed.'}</p>}
+        {result?.report_html && (
+          <>
+            <p style={{ ...reportStatusStyle, color: '#4ade80' }}>
+              {result.cached ? 'Cached demonstration report ready.' : 'Verification report ready.'}
+            </p>
+            <iframe
+              title={`Verification report for ${score.facility_name}`}
+              srcDoc={result.report_html}
+              sandbox=""
+              style={{ width: '100%', height: '230px', border: '1px solid #2d3148', borderRadius: '5px', background: '#fff' }}
+            />
+          </>
+        )}
+      </div>
+    </Section>
+  )
+}
+
+const reportButtonStyle: React.CSSProperties = {
+  width: '100%', border: '1px solid #2563eb', borderRadius: '6px', padding: '7px 9px',
+  background: '#1d4ed8', color: '#eff6ff', cursor: 'pointer', fontSize: '11px', fontWeight: 600,
+}
+
+const reportStatusStyle: React.CSSProperties = { marginTop: '8px', color: '#94a3b8', fontSize: '11px' }
 
 function FlagBadge({ flag }: { flag: DiscrepancyFlag }) {
   const colors: Record<DiscrepancyFlag, { bg: string; text: string }> = {

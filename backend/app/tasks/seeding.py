@@ -28,11 +28,12 @@ from celery import Task
 from celery.utils.log import get_task_logger
 
 from app.tasks.celery_app import celery_app
+from app.tasks.paths import script_path
 
 log: logging.Logger = get_task_logger(__name__)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-_SCRIPT = Path(__file__).resolve().parents[4] / "scripts" / "seed_facilities.py"
+_SCRIPT = script_path("seed_facilities.py")
 _DEFAULT_SOURCE = "data/fixtures/registry.csv"
 _MAX_RETRIES = 3
 _RETRY_BASE = 30  # seconds

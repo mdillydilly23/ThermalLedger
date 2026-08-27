@@ -1,5 +1,9 @@
-# Dependencies for scripts/download_sentinel5p.py and scripts/download_era5.py
+# Dependencies for the repository's standalone bootstrap scripts.
 # Install with: pip install -r requirements-scripts.txt
 requests>=2.32.0
 python-dotenv>=1.0.0
 cdsapi>=0.7.0
+pandas>=2.2.0
+pyarrow>=16.0.0
+pydantic>=2.7.0
+sqlalchemy>=2.0.0

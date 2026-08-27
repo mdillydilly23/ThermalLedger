@@ -79,7 +79,7 @@ class ReportResult(BaseModel):
 
 class TaskStatus(BaseModel):
     task_id: str
-    status: str  # pending | started | success | failure
+    status: str  # pending | started | progress | success | failure
     progress_stage: Optional[str] = None  # e.g. "Parsing document...", "Computing EVS score..."
     result: Optional[dict] = None
     error: Optional[str] = None

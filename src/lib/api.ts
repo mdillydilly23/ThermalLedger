@@ -34,7 +34,18 @@ export const fetchFacilityDetail = (id: string): Promise<EVSScore> =>
 
 // ── Plume ─────────────────────────────────────────────────────
 
-export const fetchPlumeGeoJSON = (facilityId: string, date: string): Promise<{ geojson: object }> =>
+export interface PlumePointFeature {
+  geometry: { type: 'Point'; coordinates: [number, number] }
+  properties: { weight: number; source: string }
+}
+
+export interface PlumeGeoJSONResponse {
+  facility_id: string
+  observation_date: string
+  geojson: { type: 'FeatureCollection'; features: PlumePointFeature[] }
+}
+
+export const fetchPlumeGeoJSON = (facilityId: string, date: string): Promise<PlumeGeoJSONResponse> =>
   get(`/plume/${facilityId}/geojson?observation_date=${date}`)
 
 // ── ESG upload ────────────────────────────────────────────────

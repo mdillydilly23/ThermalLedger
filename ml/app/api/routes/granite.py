@@ -8,6 +8,16 @@ router = APIRouter()
 _client = GraniteClient()
 
 
+class CachedParseRequest(BaseModel):
+    filename: str
+
+
+@router.post("/parse-cached")
+async def parse_cached_esg(req: CachedParseRequest):
+    """Return a deterministic extraction without persisting the uploaded PDF."""
+    return await _client.parse_esg_pdf("", req.filename)
+
+
 @router.post("/parse")
 async def parse_esg(file: UploadFile = File(...)):
     """Parse an ESG PDF and return structured emission claims."""

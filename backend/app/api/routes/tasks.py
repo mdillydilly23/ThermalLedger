@@ -3,7 +3,7 @@ ADR-001: Task status polling endpoint.
 Frontend polls this to drive the progress indicator during upload-to-report flow.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from app.models.api_models import TaskStatus
 from app.core.celery_app import celery_app
 
@@ -27,7 +27,14 @@ async def get_task_status(task_id: str) -> TaskStatus:
     result = celery_app.AsyncResult(task_id)
 
     if result.state == "FAILURE":
-        raise HTTPException(status_code=500, detail=str(result.info))
+        # Return a typed terminal state so the frontend can stop polling and
+        # show the actual failure instead of retrying forever.
+        return TaskStatus(
+            task_id=task_id,
+            status="FAILURE",
+            progress_stage=_STAGE_LABELS["FAILURE"],
+            error=str(result.info),
+        )
 
     return TaskStatus(
         task_id=task_id,

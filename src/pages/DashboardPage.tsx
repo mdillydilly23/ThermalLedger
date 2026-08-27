@@ -8,7 +8,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { FacilityMap } from '../components/map/FacilityMap'
 import { FacilityPanel } from '../components/dashboard/FacilityPanel'
-import { fetchFacilities } from '../lib/api'
+import { fetchFacilities, fetchPlumeGeoJSON } from '../lib/api'
 
 export function DashboardPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -19,6 +19,15 @@ export function DashboardPage() {
   })
 
   const facilities = data?.facilities ?? []
+  const plumeQuery = useQuery({
+    queryKey: ['plume', selectedId],
+    queryFn: () => fetchPlumeGeoJSON(selectedId!, '2024-06-30'),
+    enabled: selectedId !== null,
+  })
+  const plumePoints = (plumeQuery.data?.geojson.features ?? []).map((feature) => ({
+    position: feature.geometry.coordinates,
+    weight: feature.properties.weight,
+  }))
 
   return (
     <div style={{ display: 'flex', height: '100%' }}>
@@ -28,9 +37,18 @@ export function DashboardPage() {
         {isError && <LoadingOverlay message="Failed to load facilities." error />}
         <FacilityMap
           facilities={facilities}
-          plumePoints={[]}
+          plumePoints={plumePoints}
           onFacilityClick={setSelectedId}
         />
+        <div style={{
+          position: 'absolute', left: '12px', bottom: '12px', zIndex: 2,
+          padding: '7px 10px', borderRadius: '6px', background: 'rgba(15,17,23,0.88)',
+          border: '1px solid #2d3148', color: '#94a3b8', fontSize: '11px',
+        }}>
+          {selectedId
+            ? 'Plume overlay: deterministic demo fixture (not a live satellite retrieval)'
+            : 'Select a facility to view its verification overlay'}
+        </div>
       </div>
 
       {/* ── Detail panel ────────────────────────────────────── */}

@@ -11,7 +11,7 @@ celery_app instance.  Workers that start with:
 will auto-discover all tasks defined in this package.
 """
 
-from app.tasks import era5, seeding, sentinel
+from app.tasks import era5, esg, reports, scoring, seeding, sentinel
 from app.tasks.celery_app import celery_app
 
-__all__ = ["celery_app", "era5", "seeding", "sentinel"]
+__all__ = ["celery_app", "era5", "esg", "reports", "scoring", "seeding", "sentinel"]

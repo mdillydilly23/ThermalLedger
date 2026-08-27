@@ -30,11 +30,12 @@ from celery import Task
 from celery.utils.log import get_task_logger
 
 from app.tasks.celery_app import celery_app
+from app.tasks.paths import script_path
 
 log: logging.Logger = get_task_logger(__name__)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-_SCRIPT = Path(__file__).resolve().parents[4] / "scripts" / "download_era5.py"
+_SCRIPT = script_path("download_era5.py")
 _DEFAULT_OUT_DIR = "data/raw/era5"
 _MAX_RETRIES = 5
 _RETRY_BASE = 90  # seconds — CDS queue waits can be long

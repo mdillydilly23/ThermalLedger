@@ -1,106 +1,89 @@
 # ThermalLedger
 
-**AI Carbon Credit Verifier using Satellite Emissions Data**
+ThermalLedger is a methane-emissions verification proof of concept. It gives a reviewer a facility map, an Emissions Verification Score (EVS), a labelled visual overlay, ESG-claim extraction, and a verification-report workflow.
 
-Replacing self-reported corporate emissions with satellite-verified ground truth — making the $2B+ voluntary carbon market trustworthy, auditable, and legally defensible.
+## What works in the panel demo
 
-**Stack:** ESA Sentinel-5P · IBM Granite (watsonx.ai) · IBM EIS · IBM OpenPages · Hyperledger Fabric · React + MapLibre GL
+The default configuration is deliberately deterministic and runs without the large satellite archive or external API credentials:
 
----
+- A map of the committed facility fixtures, colour-coded by EVS.
+- Facility detail with uncertainty and reported-versus-estimated methane.
+- A clearly labelled deterministic plume overlay for the selected facility.
+- PDF upload that exercises FastAPI → Celery → ML-service cached ESG extraction.
+- A cached verification report generated from the facility panel.
 
-## Repo Structure
+The committed fixture scores, plume overlay, ESG extraction, and report are **demonstration outputs**. They are not live Sentinel-5P retrievals, legal attestations, or an active blockchain record. The UI and cached report label that limitation explicitly.
 
-```
-thermal_ledger/
-├── backend/        # FastAPI — data ingestion, EVS scoring API, IBM integrations
-├── ml/             # FastAPI — Gaussian plume model, EVS scorer, Granite report gen
-├── frontend/       # React + Vite — facility map, upload flow, report viewer
-├── shared/         # EVS schema (Pydantic + TS), API contract types
-├── data/           # .gitignored — satellite data, Parquet files, ESG PDFs
-│   ├── raw/        #   Sentinel-5P NetCDF, ECOSTRESS GeoTIFF, ERA5 wind fields
-│   ├── processed/  #   facility.parquet, ch4_attributed.parquet, evs_scores.parquet
-│   └── esg_pdfs/   #   staged corporate ESG PDFs for Granite ingestion
-├── infra/          # docker-compose.yml, Dockerfiles
-├── scripts/        # one-shot data bootstrap (download ERA5, seed facility CSV)
-└── docs/adr/       # Architecture Decision Records
-```
+## Quick start — panel demo
 
----
-
-## Quick Start
-
-### Prerequisites
-- Python 3.11+ with [uv](https://github.com/astral-sh/uv)
-- Node 20+ with [pnpm](https://pnpm.io)
-- Docker + Docker Compose (optional, for containerized dev)
-
-### 1 · Clone and configure environment
+Prerequisites: Docker Desktop and Docker Compose.
 
 ```bash
-git clone <repo-url>
-cd thermal_ledger
 cp .env.example .env
-# Fill in .env with your API keys
+docker compose -f infra/docker-compose.yml up --build
 ```
 
-### 2 · Start with Docker Compose (recommended)
+Open <http://localhost:5173>. The backend API is at <http://localhost:8000>, with interactive documentation at <http://localhost:8000/docs>.
+
+Suggested presentation flow:
+
+1. Select a red or amber facility marker and explain its EVS, observation coverage, uncertainty interval, and reported comparison.
+2. Point out the labelled plume overlay, explaining that it demonstrates the review experience while raw satellite processing is being connected.
+3. Open **Upload ESG**, upload any small PDF, and show the cached structured claim returned through the asynchronous task progress UI.
+4. Return to the facility detail and choose **Generate cached verification report** to show the review-ready report view.
+
+Stop the stack with `docker compose -f infra/docker-compose.yml down`.
+
+## Native development
+
+Prerequisites: Python 3.11+, [uv](https://docs.astral.sh/uv/), Node 20+, npm, and a local Redis server.
 
 ```bash
-docker compose up
-```
+cp .env.example .env
 
-Services will be available at:
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:8000
-- ML service: http://localhost:8001 (internal only)
-- API docs: http://localhost:8000/docs
-
-### 3 · Start services individually (without Docker)
-
-```bash
-# ML service
+# terminal 1 — ML service
 cd ml && uv sync && uv run fastapi dev app/main.py --port 8001
 
-# Backend service (new terminal)
+# terminal 2 — backend
 cd backend && uv sync && uv run fastapi dev app/main.py --port 8000
 
-# Frontend (new terminal)
-cd frontend && pnpm install && pnpm dev
+# terminal 3 — worker
+cd backend && uv run celery -A app.core.celery_app worker --loglevel=info
+
+# terminal 4 — frontend (from repository root)
+npm ci && npm run dev
 ```
 
-### 4 · Download satellite data (first time only)
+The native worker expects Redis at `redis://localhost:6379`; set the usual `CELERY_BROKER_URL` and `CELERY_RESULT_BACKEND` variables when you replace the demo defaults with a deployed broker.
 
-```bash
-# Download 30-day Sentinel-5P CH4 over Permian Basin
-python scripts/download_sentinel5p.py
+## Data layout
 
-# Download ERA5 wind fields for same window
-python scripts/download_era5.py
+Small deterministic fixtures are committed under `data/fixtures/` and `data/processed/`. Large inputs are intentionally excluded from Git; see [data/README.md](data/README.md) for the expected local layout and bootstrap commands.
 
-# Seed facility master table from EPA GHGRP + EU ETS CSVs
-python scripts/seed_facilities.py
+## Real-data phase
+
+The repository includes resilient Sentinel-5P and ERA5 download scripts, but the raster QA, wind-aware plume attribution, and satellite-derived EVS calculation still need implementation before this can be described as a live satellite verifier. `GRANITE_MODE=live` and the IBM/OpenPages/Fabric integration settings are also future integration points, not part of the deterministic panel demo.
+
+## Repository layout
+
+```text
+backend/       FastAPI API gateway and Celery tasks
+ml/            FastAPI EVS and cached-Granite service
+src/           React + Vite frontend
+shared/        Shared Pydantic EVS contract
+data/          Committed demo fixtures; untracked raw inputs
+infra/         Docker Compose stack
+scripts/       Data download and fixture bootstrap scripts
+docs/adr/      Architecture decisions from the prototype phase
 ```
 
----
+## Environment
 
-## Architecture Decision Records
+Copy [`.env.example`](.env.example) to `.env`. The supplied defaults are the safe demo settings:
 
-| ADR | Decision |
-|-----|----------|
-| [ADR-001](docs/adr/001-async-first-backend.md) | Async-first FastAPI + Celery background tasks |
-| [ADR-002](docs/adr/002-local-cache-mode.md) | DATA_SOURCE=local\|remote toggle for demo safety |
-| [ADR-003](docs/adr/003-evs-shared-schema.md) | EVS object as shared Pydantic + TypeScript contract |
-| [ADR-004](docs/adr/004-pydantic-api-shapes.md) | All API shapes as Pydantic models, OpenAPI-generated TS types |
-| [ADR-005](docs/adr/005-map-provider.md) | MapLibre GL JS + Deck.gl HeatmapLayer (zero cost, zero rate limits) |
-| [ADR-006](docs/adr/006-granite-cache.md) | Granite batch-and-cache; demo always runs against pre-generated outputs |
-| [ADR-007](docs/adr/007-monorepo.md) | Single monorepo, one docker-compose, shared data directory |
+```text
+DATA_SOURCE=local
+GRANITE_MODE=cached
+```
 
----
-
-## Environment Variables
-
-See [`.env.example`](.env.example) for the full schema with comments.
-
-Key toggles:
-- `DATA_SOURCE=local` — serves satellite data from `./data/` (always use for demo)
-- `GRANITE_MODE=cached` — serves pre-generated Granite outputs from `ml/cache/`
+Do not commit `.env` or real Copernicus/IBM credentials.

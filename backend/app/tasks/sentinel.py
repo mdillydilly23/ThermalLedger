@@ -26,11 +26,12 @@ from celery import Task
 from celery.utils.log import get_task_logger
 
 from app.tasks.celery_app import celery_app
+from app.tasks.paths import script_path
 
 log: logging.Logger = get_task_logger(__name__)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-_SCRIPT = Path(__file__).resolve().parents[4] / "scripts" / "download_sentinel5p.py"
+_SCRIPT = script_path("download_sentinel5p.py")
 _DEFAULT_OUT_DIR = "data/raw/sentinel5p"
 _MAX_RETRIES = 5
 _RETRY_BASE = 60  # seconds — doubled on each retry

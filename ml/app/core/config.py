@@ -19,8 +19,9 @@ class MLSettings(BaseSettings):
 
     # ADR-006
     granite_mode: Literal["cached", "live"] = "cached"
-    granite_cache_dir: Path = Path("ml/cache/granite")
-    reports_cache_dir: Path = Path("ml/cache/reports")
+    # Relative to ml/ for native development and /app for the container.
+    granite_cache_dir: Path = Path("cache/granite")
+    reports_cache_dir: Path = Path("cache/reports")
 
     # IBM watsonx.ai
     watsonx_api_key: str = ""

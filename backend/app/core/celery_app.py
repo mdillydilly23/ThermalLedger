@@ -4,13 +4,16 @@ All long-running work (Granite calls, plume model, report gen, blockchain anchor
 dispatches here so FastAPI handlers return immediately.
 """
 
+import os
+
 from celery import Celery
 
-# Redis broker — one container in docker-compose
+# Redis is local by default for native development. Compose supplies the
+# service-hostname URLs to the API and worker containers.
 celery_app = Celery(
     "thermalledger",
-    broker="redis://redis:6379/0",
-    backend="redis://redis:6379/1",
+    broker=os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0"),
+    backend=os.environ.get("CELERY_RESULT_BACKEND", "redis://localhost:6379/1"),
     include=[
         "app.tasks.scoring",
         "app.tasks.reports",
