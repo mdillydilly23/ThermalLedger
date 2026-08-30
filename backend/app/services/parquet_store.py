@@ -114,8 +114,7 @@ def upsert_evs_scores(records: list[dict]) -> int:
     tmp_path = _scores_path().with_suffix(".parquet.tmp")
     merged.to_parquet(tmp_path, index=False)
     os.replace(tmp_path, _scores_path())
-    _load_scores.cache_clear()
-    _load_facilities.cache_clear()
+    _load_scores.cache_clear()  # scores file was rewritten; invalidate scores cache only
     return len(incoming)
 
 

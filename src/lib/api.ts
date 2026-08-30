@@ -80,6 +80,39 @@ export const generateReport = (
     observation_end: end,
   })
 
+// ── Granite explain (E-1) ─────────────────────────────────────
+
+export interface ExplainResponse {
+  facility_id: string
+  question: string
+  answer: string
+  cached: boolean
+}
+
+export const explainFacilityEvs = (
+  facilityId: string,
+  question: string,
+): Promise<ExplainResponse> =>
+  post(`/facilities/${facilityId}/explain`, { question })
+
+// ── EVS history (E-2) ─────────────────────────────────────────
+
+export interface EVSHistoryPoint {
+  observation_date: string
+  evs: number
+  flag: string
+  satellite_ch4_estimate: number
+  reported_ch4: number | null
+}
+
+export interface EVSHistoryResponse {
+  facility_id: string
+  history: EVSHistoryPoint[]
+}
+
+export const fetchFacilityHistory = (facilityId: string): Promise<EVSHistoryResponse> =>
+  get(`/facilities/${facilityId}/history`)
+
 // ── Task polling (ADR-001: async background task pattern) ─────
 
 export const pollTask = (taskId: string): Promise<TaskStatus> =>

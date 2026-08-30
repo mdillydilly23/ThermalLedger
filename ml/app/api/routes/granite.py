@@ -44,3 +44,18 @@ class ReportGenRequest(BaseModel):
 async def generate_report(req: ReportGenRequest):
     """Generate a Granite verification report for a facility."""
     return await _client.generate_verification_report(req.facility_id, req.evs_data)
+
+
+class ExplainRequest(BaseModel):
+    evs_data: dict
+    question: str = "Why is this facility flagged and what does the EVS score mean?"
+
+
+@router.post("/explain")
+async def explain_evs(req: ExplainRequest):
+    """
+    Answer a reviewer's question about a facility's EVS score using Granite.
+    In GRANITE_MODE=cached this returns a deterministic explanation built from
+    the EVS data fields.  In GRANITE_MODE=live it calls watsonx.ai.
+    """
+    return await _client.explain_evs_score(req.evs_data, req.question)

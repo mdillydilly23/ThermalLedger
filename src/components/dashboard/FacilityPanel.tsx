@@ -2,11 +2,20 @@
  * FacilityPanel — EVS detail panel shown when a map marker is clicked.
  * Fetches full EVSScore for the selected facility.
  * ADR-003: all fields from the shared EVSScore schema.
+ *
+ * E-1: Granite "Explain this EVS score" chat widget.
+ * E-2: EVS trend chart showing score history across observation windows.
  */
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { fetchFacilityDetail, generateReport } from '../../lib/api'
+import {
+  fetchFacilityDetail,
+  fetchFacilityHistory,
+  generateReport,
+  explainFacilityEvs,
+} from '../../lib/api'
+import type { EVSHistoryPoint } from '../../lib/api'
 import { useTask } from '../../hooks/useTask'
 import type { EVSScore, DiscrepancyFlag } from '../../types/evs'
 
@@ -98,7 +107,13 @@ function EVSDetail({ score }: { score: EVSScore }) {
         />
       </Section>
 
+      {/* E-2: EVS trend chart */}
+      <EVSTrendChart facilityId={score.facility_id} />
+
       <VerificationReport score={score} />
+
+      {/* E-1: Granite explain chat widget */}
+      <GraniteExplainWidget facilityId={score.facility_id} facilityName={score.facility_name} />
 
       {/* Blockchain anchor */}
       <div style={{ fontSize: '11px', color: '#475569', borderTop: '1px solid #2d3148', paddingTop: '10px' }}>
@@ -107,6 +122,341 @@ function EVSDetail({ score }: { score: EVSScore }) {
           : 'Not yet anchored to Hyperledger Fabric.'}
       </div>
     </div>
+  )
+}
+
+// ── E-2: EVS Trend Chart ──────────────────────────────────────────────────────
+
+function EVSTrendChart({ facilityId }: { facilityId: string }) {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['facility-history', facilityId],
+    queryFn: () => fetchFacilityHistory(facilityId),
+  })
+
+  if (isLoading) {
+    return (
+      <Section title="EVS Trend">
+        <p style={{ padding: '10px', color: '#64748b', fontSize: '12px' }}>Loading history…</p>
+      </Section>
+    )
+  }
+  if (isError || !data?.history?.length) return null
+
+  const history = data.history
+  const BAR_W = 44
+  const GAP = 10
+  const CHART_H = 64
+  const svgWidth = history.length * (BAR_W + GAP) - GAP
+  const maxEvs = 100
+
+  const flagColor = (flag: string) =>
+    flag === 'high' ? '#ef4444' : flag === 'watch' ? '#f59e0b' : '#22c55e'
+
+  const shortDate = (d: string) => {
+    try { return new Date(d).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }) }
+    catch { return d }
+  }
+
+  return (
+    <Section title="EVS Trend">
+      <div style={{ padding: '12px 10px 8px' }}>
+        <svg width={svgWidth} height={CHART_H + 32} style={{ display: 'block', overflow: 'visible', width: '100%' }}>
+          {history.map((pt: EVSHistoryPoint, i: number) => {
+            const barH = Math.max(4, Math.round((pt.evs / maxEvs) * CHART_H))
+            const x = i * (BAR_W + GAP)
+            const color = flagColor(pt.flag)
+            return (
+              <g key={pt.observation_date}>
+                {/* Bar */}
+                <rect
+                  x={x}
+                  y={CHART_H - barH}
+                  width={BAR_W}
+                  height={barH}
+                  fill={color}
+                  fillOpacity={0.75}
+                  rx={3}
+                />
+                {/* EVS label inside/above bar */}
+                <text
+                  x={x + BAR_W / 2}
+                  y={CHART_H - barH - 4}
+                  textAnchor="middle"
+                  fontSize={10}
+                  fill={color}
+                  fontWeight={700}
+                >
+                  {pt.evs.toFixed(0)}
+                </text>
+                {/* Date label */}
+                <text
+                  x={x + BAR_W / 2}
+                  y={CHART_H + 14}
+                  textAnchor="middle"
+                  fontSize={9}
+                  fill="#475569"
+                >
+                  {shortDate(pt.observation_date)}
+                </text>
+                {/* Flag label */}
+                <text
+                  x={x + BAR_W / 2}
+                  y={CHART_H + 26}
+                  textAnchor="middle"
+                  fontSize={8}
+                  fill={color}
+                  fontWeight={600}
+                >
+                  {pt.flag.toUpperCase()}
+                </text>
+              </g>
+            )
+          })}
+          {/* Trend line */}
+          {history.length > 1 && (
+            <polyline
+              points={history.map((pt: EVSHistoryPoint, i: number) => {
+                const x = i * (BAR_W + GAP) + BAR_W / 2
+                const y = CHART_H - Math.max(4, Math.round((pt.evs / maxEvs) * CHART_H))
+                return `${x},${y}`
+              }).join(' ')}
+              fill="none"
+              stroke="#60a5fa"
+              strokeWidth={1.5}
+              strokeDasharray="4 3"
+              opacity={0.6}
+            />
+          )}
+        </svg>
+        <p style={{ fontSize: '10px', color: '#334155', marginTop: '4px' }}>
+          Synthetic observation history — demonstrates continuous monitoring capability.
+        </p>
+      </div>
+    </Section>
+  )
+}
+
+// ── E-1: Granite Explain Widget ───────────────────────────────────────────────
+
+interface ChatMessage {
+  role: 'user' | 'assistant'
+  text: string
+  cached?: boolean
+}
+
+const SUGGESTED_QUESTIONS = [
+  'Why is this facility flagged?',
+  'What does the uncertainty interval mean?',
+  'How is the EVS score calculated?',
+  'What actions should be taken for a HIGH flag?',
+]
+
+function GraniteExplainWidget({ facilityId, facilityName }: { facilityId: string; facilityName: string }) {
+  const [open, setOpen] = useState(false)
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const bottomRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  const sendQuestion = async (question: string) => {
+    if (!question.trim() || loading) return
+    const q = question.trim()
+    setInput('')
+    setError(null)
+    setMessages((prev) => [...prev, { role: 'user', text: q }])
+    setLoading(true)
+    try {
+      const res = await explainFacilityEvs(facilityId, q)
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', text: res.answer, cached: res.cached },
+      ])
+    } catch {
+      setError('Unable to get an explanation. Check that the ML service is running.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const formatAnswer = (text: string) => {
+    // Convert **bold** markdown to styled spans and preserve newlines
+    const parts = text.split(/(\*\*[^*]+\*\*)/)
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i}>{part.slice(2, -2)}</strong>
+      }
+      return <span key={i}>{part}</span>
+    })
+  }
+
+  return (
+    <Section title="Ask Granite AI">
+      {!open ? (
+        <div style={{ padding: '10px' }}>
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            style={{
+              width: '100%',
+              background: 'linear-gradient(135deg, #1e3a5f 0%, #0f1f3d 100%)',
+              border: '1px solid #2563eb',
+              borderRadius: '8px',
+              padding: '10px 12px',
+              color: '#93c5fd',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <span style={{ fontSize: '16px' }}>🤖</span>
+            <span>Ask IBM Granite to explain this EVS score</span>
+          </button>
+          <p style={{ fontSize: '10px', color: '#334155', marginTop: '6px' }}>
+            Powered by IBM Granite · {facilityName}
+          </p>
+        </div>
+      ) : (
+        <div style={{ padding: '10px' }}>
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <span style={{ fontSize: '11px', color: '#60a5fa', fontWeight: 600 }}>
+              🤖 IBM Granite — {facilityName}
+            </span>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', fontSize: '14px' }}
+            >
+              ×
+            </button>
+          </div>
+
+          {/* Messages */}
+          <div style={{
+            background: '#0a0c12',
+            border: '1px solid #1e293b',
+            borderRadius: '6px',
+            padding: '8px',
+            minHeight: '80px',
+            maxHeight: '240px',
+            overflowY: 'auto',
+            marginBottom: '8px',
+            fontSize: '12px',
+            lineHeight: 1.55,
+          }}>
+            {messages.length === 0 && (
+              <p style={{ color: '#334155', fontSize: '11px', margin: 0 }}>
+                Ask a question about this facility's EVS score below.
+              </p>
+            )}
+            {messages.map((msg, i) => (
+              <div key={i} style={{
+                marginBottom: '8px',
+                padding: '6px 8px',
+                borderRadius: '5px',
+                background: msg.role === 'user' ? '#1e293b' : '#0f1f3d',
+                borderLeft: `2px solid ${msg.role === 'user' ? '#475569' : '#2563eb'}`,
+              }}>
+                <div style={{ fontSize: '10px', color: msg.role === 'user' ? '#64748b' : '#60a5fa', marginBottom: '3px', fontWeight: 600 }}>
+                  {msg.role === 'user' ? 'You' : `IBM Granite${msg.cached ? ' (cached)' : ' (live)'}`}
+                </div>
+                <div style={{ color: msg.role === 'user' ? '#94a3b8' : '#cbd5e1', whiteSpace: 'pre-wrap' }}>
+                  {msg.role === 'assistant' ? formatAnswer(msg.text) : msg.text}
+                </div>
+              </div>
+            ))}
+            {loading && (
+              <div style={{ padding: '6px 8px', color: '#3b82f6', fontSize: '11px' }}>
+                Granite is thinking…
+              </div>
+            )}
+            {error && (
+              <div style={{ padding: '6px 8px', color: '#f87171', fontSize: '11px' }}>
+                {error}
+              </div>
+            )}
+            <div ref={bottomRef} />
+          </div>
+
+          {/* Suggested questions */}
+          {messages.length === 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' }}>
+              {SUGGESTED_QUESTIONS.map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => sendQuestion(q)}
+                  disabled={loading}
+                  style={{
+                    background: '#1e293b',
+                    border: '1px solid #2d3748',
+                    borderRadius: '12px',
+                    padding: '3px 8px',
+                    color: '#93c5fd',
+                    fontSize: '10px',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    opacity: loading ? 0.5 : 1,
+                  }}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Input */}
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && sendQuestion(input)}
+              placeholder="Ask a question…"
+              disabled={loading}
+              style={{
+                flex: 1,
+                background: '#0f1117',
+                border: '1px solid #2d3148',
+                borderRadius: '6px',
+                color: '#e2e8f0',
+                padding: '7px 9px',
+                fontSize: '12px',
+                outline: 'none',
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => sendQuestion(input)}
+              disabled={loading || !input.trim()}
+              style={{
+                background: loading || !input.trim() ? '#1e293b' : '#2563eb',
+                border: '1px solid #3b82f6',
+                borderRadius: '6px',
+                color: '#eff6ff',
+                padding: '7px 12px',
+                cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
+                fontSize: '12px',
+                fontWeight: 600,
+                opacity: loading || !input.trim() ? 0.5 : 1,
+              }}
+            >
+              Ask
+            </button>
+          </div>
+          <p style={{ fontSize: '10px', color: '#334155', marginTop: '5px' }}>
+            IBM Granite via watsonx.ai · context: EVS data for {facilityName}
+          </p>
+        </div>
+      )}
+    </Section>
   )
 }
 

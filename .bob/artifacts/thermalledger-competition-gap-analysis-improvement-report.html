@@ -524,40 +524,101 @@ const INITIAL_VIEW = {
   <div class="card-desc">
     There is no React <code>ErrorBoundary</code> wrapping the application. If any component throws during render (e.g. malformed API response, unexpected null), the entire app goes blank with no user-visible message.
   </div>
-  <div class="card-meta"><span class="pill file">src/main.tsx</span><span class="pill effort-low">Effort: low</span></div>
-  <div class="fix"><div class="fix-label">Fix</div>Wrap <code>&lt;App /&gt;</code> in a simple <code>ErrorBoundary</code> class component that renders a "Something went wrong — reload" message. Add a "reload" button that calls <code>window.location.reload()</code>.</div>
+  <div class="card-meta"><span class="pill file">src/main.tsx</span><span class="pill effort-low">Effort: low</span><span class="pill" style="background:#dcfce7;color:#166534;font-weight:700">✓ Resolved</span></div>
+  <div class="fix">
+    <div class="fix-label">Fix — implemented in src/main.tsx</div>
+    An <code>ErrorBoundary</code> class component was added directly in <code>src/main.tsx</code> and wraps the full provider tree. On any unhandled render error it displays a centred "Something went wrong" message with a <strong>Reload</strong> button that calls <code>window.location.reload()</code>.
+    <pre>class ErrorBoundary extends React.Component&lt;React.PropsWithChildren, {hasError:boolean}&gt; {
+  static getDerivedStateFromError() { return { hasError: true } }
+  render() {
+    if (this.state.hasError) return (
+      &lt;div style={{padding:'48px 24px',textAlign:'center'}}&gt;
+        &lt;h2&gt;Something went wrong&lt;/h2&gt;
+        &lt;button onClick={()=&gt;window.location.reload()}&gt;Reload&lt;/button&gt;
+      &lt;/div&gt;
+    )
+    return this.props.children
+  }
+}
+
+// In render:
+&lt;ErrorBoundary&gt;
+  &lt;QueryClientProvider client={queryClient}&gt;&lt;App /&gt;&lt;/QueryClientProvider&gt;
+&lt;/ErrorBoundary&gt;</pre>
+  </div>
 </div>
 
 <div class="card low">
   <div class="card-title">L-2 · Task polling does not use exponential backoff after repeated errors</div>
   <div class="card-desc">
-    <code>useTask.ts</code> retries after <code>POLL_INTERVAL_MS * 2</code> (3 s) on any error, indefinitely. If the backend is down, this floods the server with requests. Exponential backoff with a cap (e.g. max 30 s) would be more polished.
+    <code>useTask.ts</code> retried after <code>POLL_INTERVAL_MS * 2</code> (3 s) on any error, indefinitely. If the backend is down, this floods the server with requests. Exponential backoff with a cap (e.g. max 30 s) is more polished.
   </div>
-  <div class="card-meta"><span class="pill file">src/hooks/useTask.ts</span><span class="pill effort-low">Effort: low</span></div>
+  <div class="card-meta"><span class="pill file">src/hooks/useTask.ts</span><span class="pill effort-low">Effort: low</span><span class="pill" style="background:#dcfce7;color:#166534;font-weight:700">✓ Resolved</span></div>
+  <div class="fix">
+    <div class="fix-label">Fix — implemented in src/hooks/useTask.ts</div>
+    An <code>errorCount</code> counter is tracked inside the effect. On each consecutive failure the backoff doubles: <code>POLL_INTERVAL_MS × 2^errorCount</code>, capped at <code>MAX_BACKOFF_MS = 30 000 ms</code>. The counter resets to 0 on a successful poll.
+    <pre>const MAX_BACKOFF_MS = 30_000
+let errorCount = 0
+
+// on success:
+errorCount = 0
+
+// on catch:
+errorCount++
+const backoff = Math.min(POLL_INTERVAL_MS * 2 ** errorCount, MAX_BACKOFF_MS)
+setTimeout(poll, backoff)</pre>
+  </div>
 </div>
 
 <div class="card low">
   <div class="card-title">L-3 · <code>_load_facilities.cache_clear()</code> called on every <code>upsert_evs_scores</code> unnecessarily</div>
   <div class="card-desc">
-    <code>parquet_store.py</code> calls <code>_load_facilities.cache_clear()</code> even when facilities data was not changed. The facilities Parquet is only written by seeding scripts, not by <code>upsert_evs_scores</code>. Clearing the facility cache on every EVS upsert causes an unnecessary full re-read of <code>facilities.parquet</code> on the next request.
+    <code>parquet_store.py</code> called <code>_load_facilities.cache_clear()</code> even when facilities data was not changed. The facilities Parquet is only written by seeding scripts, not by <code>upsert_evs_scores</code>. Clearing the facility cache on every EVS upsert caused an unnecessary full re-read of <code>facilities.parquet</code> on the next request.
   </div>
-  <div class="card-meta"><span class="pill file">backend/app/services/parquet_store.py</span><span class="pill effort-low">Effort: low</span></div>
+  <div class="card-meta"><span class="pill file">backend/app/services/parquet_store.py</span><span class="pill effort-low">Effort: low</span><span class="pill" style="background:#dcfce7;color:#166534;font-weight:700">✓ Resolved</span></div>
+  <div class="fix">
+    <div class="fix-label">Fix — implemented in backend/app/services/parquet_store.py</div>
+    The spurious <code>_load_facilities.cache_clear()</code> call was removed from <code>upsert_evs_scores</code>. Only <code>_load_scores.cache_clear()</code> is called, because that is the only file rewritten by the upsert operation.
+    <pre># Before (line 117–118):
+_load_scores.cache_clear()
+_load_facilities.cache_clear()   # &lt;-- removed
+
+# After:
+_load_scores.cache_clear()  # scores file was rewritten; invalidate scores cache only</pre>
+  </div>
 </div>
 
 <div class="card low">
   <div class="card-title">L-4 · <code>data/processed/</code> Parquet files are committed but <code>.gitignore</code> may exclude them</div>
   <div class="card-desc">
-    Verify that <code>data/processed/evs_scores.parquet</code> and <code>data/processed/facilities.parquet</code> are tracked by Git. The <code>data/</code> directory pattern in <code>.gitignore</code> may be excluding them, which would cause a fresh clone to produce a startup crash (C-2 above). Run <code>git status data/processed/</code> to confirm.
+    Verified that <code>data/processed/evs_scores.parquet</code> and <code>data/processed/facilities.parquet</code> are tracked by Git. The <code>.gitignore</code> excludes only sub-paths (<code>data/raw/</code>, <code>data/processed/plumes/</code>, <code>data/uploads/</code>, <code>data/esg_pdfs/</code>, <code>data/audit/</code>) — not <code>data/processed/</code> itself. Both Parquet fixtures are confirmed present in the Git index via <code>git ls-files data/processed/</code>.
   </div>
-  <div class="card-meta"><span class="pill file">.gitignore</span><span class="pill file">data/processed/</span><span class="pill effort-low">Effort: low</span></div>
+  <div class="card-meta"><span class="pill file">.gitignore</span><span class="pill file">data/processed/</span><span class="pill effort-low">Effort: low</span><span class="pill" style="background:#dcfce7;color:#166534;font-weight:700">✓ Verified — no action needed</span></div>
+  <div class="fix">
+    <div class="fix-label">Verification result</div>
+    <code>git ls-files data/processed/</code> returned:
+    <pre>data/processed/evs_scores.parquet
+data/processed/facilities.parquet</pre>
+    Both files are tracked. The <code>.gitignore</code> patterns are already surgical: only volatile runtime directories are excluded. No changes were required.
+  </div>
 </div>
 
 <div class="card low">
   <div class="card-title">L-5 · No <code>CHANGELOG.md</code> or version notes — judges cannot see project progression</div>
   <div class="card-desc">
-    A brief <code>CHANGELOG.md</code> or "What was built" section in the README demonstrates active development and shows judges the trajectory of the project (prototype → demo → live path). The ADRs partially fill this role but are technical, not narrative.
+    A brief <code>CHANGELOG.md</code> demonstrates active development and shows judges the trajectory of the project (prototype → demo → live path). The ADRs partially fill this role but are technical, not narrative.
   </div>
-  <div class="card-meta"><span class="pill file">README.md</span><span class="pill effort-low">Effort: low</span></div>
+  <div class="card-meta"><span class="pill file">CHANGELOG.md</span><span class="pill effort-low">Effort: low</span><span class="pill" style="background:#dcfce7;color:#166534;font-weight:700">✓ Resolved</span></div>
+  <div class="fix">
+    <div class="fix-label">Fix — CHANGELOG.md created at repo root</div>
+    <code>CHANGELOG.md</code> was created at the repository root following the <a href="https://keepachangelog.com/en/1.1.0/">Keep a Changelog</a> format. It covers three versioned milestones:
+    <ul style="margin:6px 0 0 16px;line-height:1.8">
+      <li><strong>[0.1.0]</strong> — IBM AI Builders Challenge Prototype: core FastAPI backend, ML service, React UI, Deck.gl map, Parquet fixtures, cached Granite fallback, Docker Compose stack.</li>
+      <li><strong>[0.2.0]</strong> — Live Verification Path: Celery pipeline, Sentinel-5P / ERA5 integration, Prototype page, CI workflow, global map view fix.</li>
+      <li><strong>[0.3.0]</strong> — Demo Hardening: multi-stage Docker build, CORS env var, API key guard, worker healthcheck, updated Granite model ID, removed unused dependencies.</li>
+      <li><strong>[Unreleased]</strong> — current low-priority fixes (ErrorBoundary, exponential backoff, cache clear, CHANGELOG itself).</li>
+    </ul>
+  </div>
 </div>
 
 

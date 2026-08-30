@@ -5,6 +5,20 @@ import { fetchFacilities, fetchPrototypeStatus, startVerificationRun } from '../
 import { useTask } from '../hooks/useTask'
 import type { DiscrepancyFlag } from '../types/evs'
 
+// E-3: EIS status fetch
+async function fetchEISStatus(): Promise<{ configured: boolean; message: string }> {
+  const res = await fetch('/api/eis/status')
+  if (!res.ok) return { configured: false, message: 'EIS status unavailable.' }
+  return res.json()
+}
+
+// E-4: watsonx.data registry source fetch
+async function fetchRegistrySource(): Promise<{ source: string; configured: boolean; message: string }> {
+  const res = await fetch('/api/facilities/registry-source')
+  if (!res.ok) return { source: 'parquet', configured: false, message: 'Registry source unavailable.' }
+  return res.json()
+}
+
 export function PrototypePage() {
   const queryClient = useQueryClient()
   const [selectedFacility, setSelectedFacility] = useState('all')
@@ -18,6 +32,16 @@ export function PrototypePage() {
     queryKey: ['prototype-status'],
     queryFn: fetchPrototypeStatus,
     refetchInterval: taskId ? 3000 : 15000,
+  })
+  const eisQuery = useQuery({
+    queryKey: ['eis-status'],
+    queryFn: fetchEISStatus,
+    staleTime: 60_000,
+  })
+  const registryQuery = useQuery({
+    queryKey: ['registry-source'],
+    queryFn: fetchRegistrySource,
+    staleTime: 60_000,
   })
   const { data: status, isLoading: statusLoading, isError: statusError, refetch: refetchStatus } = statusQuery
   const facilitiesQuery = useQuery({
@@ -137,6 +161,10 @@ export function PrototypePage() {
                 <StatusBadge label="Copernicus" ok={status.credentials.copernicus} />
                 <StatusBadge label="CDS" ok={status.credentials.cds} />
                 <StatusBadge label="watsonx" ok={status.credentials.watsonx} />
+                {/* E-3: IBM EIS live badge */}
+                <EISBadge configured={eisQuery.data?.configured ?? false} />
+                {/* E-4: watsonx.data registry source badge */}
+                <WatsonxDataBadge source={registryQuery.data?.source ?? 'parquet'} configured={registryQuery.data?.configured ?? false} />
                 <ModeBadge label={status.audit_mode.replace(/_/g, ' ')} tone="blue" />
               </div>
               <div style={styles.metrics}>
@@ -207,6 +235,26 @@ function TaskRunStatus({
 
 function StatusBadge({ label, ok }: { label: string; ok: boolean }) {
   return <ModeBadge label={`${label}: ${ok ? 'ready' : 'missing'}`} tone={ok ? 'green' : 'red'} />
+}
+
+/** E-3: IBM EIS badge — shows live/unconfigured state */
+function EISBadge({ configured }: { configured: boolean }) {
+  return (
+    <ModeBadge
+      label={`IBM EIS: ${configured ? 'live' : 'unconfigured'}`}
+      tone={configured ? 'green' : 'amber'}
+    />
+  )
+}
+
+/** E-4: watsonx.data registry source badge */
+function WatsonxDataBadge({ source, configured }: { source: string; configured: boolean }) {
+  return (
+    <ModeBadge
+      label={`Registry: ${configured ? 'watsonx.data' : source}`}
+      tone={configured ? 'green' : 'blue'}
+    />
+  )
 }
 
 function ModeBadge({ label, tone }: { label: string; tone: 'green' | 'amber' | 'red' | 'blue' }) {

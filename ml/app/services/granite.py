@@ -80,6 +80,95 @@ ESG report text:
             "cached": False,
         }
 
+
+    # ── EVS explanation ───────────────────────────────────────
+
+    async def explain_evs_score(self, evs_data: dict, question: str) -> dict[str, Any]:
+        """
+        Answer a user's question about a facility's EVS score using Granite.
+        Returns: dict with answer (str) and cached (bool).
+        """
+        if self._mode == "cached":
+            return self._cached_explain(evs_data, question)
+        return await self._live_explain(evs_data, question)
+
+    def _cached_explain(self, evs_data: dict, question: str) -> dict[str, Any]:
+        """Return a deterministic explanation built directly from EVS data — no API call."""
+        flag = str(evs_data.get("flag") or "").lower()
+        flag_label = {
+            "high": "HIGH — significant discrepancy",
+            "watch": "WATCH — possible under-reporting",
+            "clear": "CLEAR — within tolerance",
+        }.get(flag, flag.upper())
+        facility_name = str(evs_data.get("facility_name") or evs_data.get("facility_id") or "this facility")
+        evs_score = evs_data.get("evs")
+        evs_display = f"{float(evs_score):.1f}" if evs_score is not None else "unknown"
+        sat_ch4 = evs_data.get("satellite_ch4_estimate")
+        sat_display = f"{float(sat_ch4):,.0f} t/yr" if sat_ch4 is not None else "not available"
+        reported_ch4 = evs_data.get("reported_ch4")
+        reported_display = f"{float(reported_ch4):,.0f} t/yr" if reported_ch4 is not None else "not disclosed"
+        delta_pct = evs_data.get("delta_pct")
+        delta_display = f"{float(delta_pct):+.1f}%" if delta_pct is not None else "unavailable"
+        sigma = evs_data.get("sigma_deviation")
+        sigma_display = f"{float(sigma):.2f}σ" if sigma is not None else "unavailable"
+        coverage = evs_data.get("coverage_pct")
+        coverage_display = f"{float(coverage):.1f}%" if coverage is not None else "unavailable"
+        obs_start = str(evs_data.get("observation_start") or "unknown")
+        obs_end = str(evs_data.get("observation_end") or "unknown")
+
+        answer = (
+            f"**{facility_name}** received an EVS of **{evs_display}** with a flag of **{flag_label}**.\n\n"
+            f"During the observation window ({obs_start} to {obs_end}), Sentinel-5P TROPOMI estimated "
+            f"methane emissions at **{sat_display}**, while the facility's own Scope 1 disclosure was "
+            f"**{reported_display}**. That corresponds to a discrepancy of **{delta_display}** "
+            f"({sigma_display} from the satellite uncertainty interval) and a satellite data coverage "
+            f"of **{coverage_display}**.\n\n"
+        )
+
+        if flag == "high":
+            answer += (
+                "The HIGH flag means the satellite estimate exceeds the reported value by more than 2 standard "
+                "deviations, which is the threshold that would normally trigger an OpenPages GRC workflow for "
+                "further investigation. Common causes include fugitive emissions not captured in routine "
+                "measurement protocols, tank-venting events, or under-counting of secondary emission sources."
+            )
+        elif flag == "watch":
+            answer += (
+                "The WATCH flag means the satellite estimate is between 1 and 2 standard deviations above the "
+                "reported value. This warrants monitoring but does not by itself indicate deliberate misreporting. "
+                "Measurement methodology differences, temporal sampling gaps, and plume attribution uncertainty "
+                "can all contribute to a WATCH-level reading."
+            )
+        else:
+            answer += (
+                "The CLEAR flag indicates that the satellite estimate is consistent with the reported value within "
+                "the 95% confidence interval of the TROPOMI retrieval. No significant discrepancy was detected "
+                "for this observation window."
+            )
+
+        answer += (
+            "\n\n*This explanation is a demonstration prototype generated from pre-computed EVS fixture data. "
+            "It is not a live satellite retrieval or a legal attestation.*"
+        )
+
+        return {"answer": answer, "cached": True}
+
+    async def _live_explain(self, evs_data: dict, question: str) -> dict[str, Any]:
+        prompt = f"""You are ThermalLedger, a methane-emissions analyst AI. A reviewer is examining an
+Emission Verification Score (EVS) for an industrial facility. Answer their question clearly and concisely
+based on the evidence JSON provided. Use plain English; define any acronym on first use.
+Limit your answer to 4 short paragraphs. Do not start with "I" or "As an AI".
+
+EVS evidence:
+{json.dumps(evs_data, indent=2, default=str)}
+
+Reviewer question: {question}
+
+Answer:"""
+        answer = await self._watsonx_generate(prompt, max_new_tokens=600)
+        return {"answer": answer.strip(), "cached": False}
+
+
     # ── Report generation ─────────────────────────────────────
 
     async def generate_verification_report(self, facility_id: str, evs_data: dict) -> dict[str, Any]:

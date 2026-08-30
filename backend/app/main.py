@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import esg, facilities, plume, prototype, reports, tasks, verification
+from app.api.routes import eis, esg, facilities, plume, prototype, reports, tasks, verification
 from app.core.config import settings
 
 
@@ -55,6 +55,7 @@ app.include_router(tasks.router, prefix="/tasks", tags=["tasks"])
 app.include_router(plume.router, prefix="/plume", tags=["plume"])
 app.include_router(prototype.router, prefix="/prototype", tags=["prototype"])
 app.include_router(verification.router, prefix="/verification", tags=["verification"])
+app.include_router(eis.router, prefix="/eis", tags=["eis"])
 
 
 @app.get("/health")
