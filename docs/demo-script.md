@@ -1,34 +1,69 @@
-# ThermalLedger Prototype Demo Script
+# ThermalLedger Showcase Demo Script
 
-## Preflight
+## Primary demo: deterministic panel walkthrough
 
-1. Copy `.env.example` to `.env`.
-2. Set `COPERNICUS_USERNAME`, `COPERNICUS_PASSWORD`, `CDS_API_KEY`, `WATSONX_API_KEY`, and `WATSONX_PROJECT_ID`.
-3. Set `GRANITE_MODE=live` for live Granite, or `GRANITE_MODE=cached` for the deterministic fallback.
-4. Start the stack:
+This is the recommended showcase flow. It uses the committed facility fixtures,
+deterministic plume overlay, and cached Granite responses, so no third-party
+credentials or satellite downloads are needed.
 
-```bash
-docker compose -f infra/docker-compose.yml up --build
-```
+### Preflight
 
-Open `http://localhost:5173` and confirm `Prototype > Readiness` shows backend and ML as ready.
+1. Install and start Docker Desktop. Docker Compose, Redis, Python, and Node
+   dependencies are provided by the containers; no native `uv`, Redis, or Node
+   installation is required.
+2. Ensure `.env` keeps the safe defaults:
 
-## Walkthrough
+   ```text
+   DATA_SOURCE=local
+   GRANITE_MODE=cached
+   ```
 
-1. Open **Prototype** and review credential/data status.
-2. Keep **Reuse downloaded raw data** enabled if Sentinel-5P and ERA5 files are already present under `data/raw/`.
-3. Start a verification run for all facilities or a selected facility.
-4. Return to **Dashboard**, select the updated facility, and point out the plume source label:
-   - `sentinel5p_live_attribution` means a processed live-source plume is being shown.
-   - `deterministic_demo_fixture` means the dashboard is using the safe fallback.
-5. Open **Upload ESG**, upload a PDF, and show Granite-extracted methane claims plus facility matches.
-6. Generate the verification report from the facility panel.
-7. Point out the audit label:
-   - `local_audit_fallback` is an append-only local JSONL audit trail under `data/audit/`.
-   - Hyperledger/OpenPages clients remain pluggable production integration points.
+3. Start the stack:
 
-## Prototype Boundaries
+   ```bash
+   docker compose -f infra/docker-compose.yml up --build
+   ```
 
-- Live path: Sentinel-5P/ERA5 ingestion, ML plume attribution, EVS Parquet persistence, watsonx Granite parsing/report generation when credentials are present.
-- Fallback path: cached Granite outputs and deterministic plume overlay.
-- Production gaps: regulatory-grade atmospheric inversion, object storage and malware scanning for uploads, live OpenPages case creation, live Hyperledger Fabric anchoring, auth, observability, and deployment hardening.
+4. Confirm the `redis`, `ml`, `backend`, `worker`, and `frontend` services are
+   running. Open `http://localhost:5173`; the Prototype tab should show Backend
+   and ML as ready.
+5. Keep a small, non-sensitive PDF (under 10 MB) ready for the upload step.
+
+### Walkthrough
+
+1. On **Dashboard**, select a red or amber facility. Explain the EVS, coverage,
+   uncertainty interval, and reported-versus-estimated methane value.
+2. Point out the plume label: `deterministic_demo_fixture` is a deliberately
+   labelled visual aid, not a live satellite retrieval.
+3. Open **Upload ESG**, upload the prepared PDF, and show the asynchronous task
+   completing with cached Granite-extracted claims and facility matches.
+4. Return to the facility panel and select **Generate verification report**.
+   Show the cached report and its local audit anchor.
+5. Explain that `local_audit_fallback` is an append-only local JSONL record.
+   OpenPages and Hyperledger Fabric are future integration points, not active
+   production services in this prototype.
+
+## Optional live-data walkthrough
+
+Use this only after completing the deterministic preflight and testing it before
+the presentation. Keep `DATA_SOURCE=local`: the prototype processes downloaded
+local files and writes its outputs locally. Do not set it to `remote`.
+
+1. Add `COPERNICUS_USERNAME`, `COPERNICUS_PASSWORD`, `CDS_API_KEY`,
+   `WATSONX_API_KEY`, and `WATSONX_PROJECT_ID` to `.env` only when needed.
+2. Download Sentinel-5P and ERA5 inputs into `data/raw/`, or enable a small,
+   single-facility verification run with **Reuse downloaded raw data** disabled.
+3. Run and verify one facility before the presentation. Confirm that the
+   dashboard shows a persisted `sentinel5p_live_attribution` plume.
+4. Keep `GRANITE_MODE=cached` for the primary walkthrough. Set
+   `GRANITE_MODE=live` only for a separately rehearsed watsonx demonstration.
+
+## Prototype boundaries
+
+- The deterministic mode is a reliable review-experience demonstration, not a
+  live Sentinel-5P retrieval, legal attestation, or blockchain record.
+- The live path is a technical prototype, not a regulatory-grade atmospheric
+  inversion or production data platform.
+- Production additions still needed include upload malware scanning/object
+  storage, authentication, observability, deployment hardening, OpenPages case
+  creation, and Hyperledger Fabric anchoring.

@@ -9,8 +9,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 
 # The Compose build context is the repository root so the service can import
 # the shared contract and the worker can run the bootstrap scripts.
-COPY backend/pyproject.toml ./pyproject.toml
-RUN uv sync --no-dev --no-install-project
+COPY backend/pyproject.toml backend/uv.lock ./
+RUN uv sync --locked --no-dev --no-install-project
 
 # Copy application code, shared contract, and worker scripts.
 COPY backend/app/ ./app/

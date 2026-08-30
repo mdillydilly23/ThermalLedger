@@ -11,8 +11,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN pip install --no-cache-dir uv
 
 # Compose builds from the repository root so the shared contract is available.
-COPY ml/pyproject.toml ./pyproject.toml
-RUN uv sync --no-dev --no-install-project
+COPY ml/pyproject.toml ml/uv.lock ./
+RUN uv sync --locked --no-dev --no-install-project
 
 # Copy application code and cache
 COPY ml/app/ ./app/
