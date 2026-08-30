@@ -4,9 +4,13 @@ ADR-002: DATA_SOURCE controls local vs remote data routing.
 ADR-006: GRANITE_MODE controls cached vs live Granite calls (ML service reads its own copy).
 """
 
+from __future__ import annotations
+
+import json
 from pathlib import Path
 from typing import Literal
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,8 +21,35 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # CORS — override with a comma-separated list or "*" for open deployments
-    allowed_origins: list[str] = ["http://localhost:5173"]
+    # CORS — stored internally as a raw string so pydantic-settings never
+    # attempts JSON-decoding it.  _parse_allowed_origins converts it to a
+    # list[str] after all fields are populated.
+    # Accepted env formats:
+    #   ALLOWED_ORIGINS=http://localhost:5173
+    #   ALLOWED_ORIGINS=http://localhost:5173,https://my-app.example.com
+    #   ALLOWED_ORIGINS=["http://localhost:5173"]
+    allowed_origins: str = "http://localhost:5173"
+
+    @model_validator(mode="after")
+    def _parse_allowed_origins(self) -> "Settings":
+        """Convert allowed_origins from env string to a list[str]."""
+        raw = self.allowed_origins
+        if isinstance(raw, list):
+            # Already a list — nothing to do (e.g. programmatic construction).
+            return self
+        stripped = raw.strip()
+        if not stripped:
+            object.__setattr__(self, "allowed_origins", [])
+            return self
+        if stripped.startswith("["):
+            object.__setattr__(self, "allowed_origins", json.loads(stripped))
+        else:
+            object.__setattr__(
+                self,
+                "allowed_origins",
+                [o.strip() for o in stripped.split(",") if o.strip()],
+            )
+        return self
 
     # Demo API key — set to a non-empty value to guard mutating endpoints.
     # Use DEMO_API_KEY=thermalledger-demo in production .env deployments.
