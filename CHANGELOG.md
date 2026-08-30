@@ -15,6 +15,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 - Removed spurious `_load_facilities.cache_clear()` call in `parquet_store.upsert_evs_scores` — the facilities Parquet is only written by seeding scripts, not EVS upserts.
 
+### Removed
+- Untracked all committed Python bytecode files (`__pycache__/*.pyc`) from version control. These are auto-generated build artifacts already covered by `.gitignore` and should not be version-controlled.
+
 ---
 
 ## [0.3.0] — Demo Hardening
