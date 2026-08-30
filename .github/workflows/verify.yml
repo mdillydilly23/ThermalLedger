@@ -12,6 +12,8 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - name: Install backend dependencies
         run: cd backend && uv sync
+      - name: Lint backend
+        run: uv run --project backend ruff check backend/app backend/tests
       - name: Test backend demo APIs
         run: |
           uv run --project backend pytest backend/tests
@@ -22,7 +24,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - name: Install and test ML cache service
-        run: cd ml && uv sync && uv run pytest tests
+        run: cd ml && uv sync
+      - name: Lint ML service
+        run: cd ml && uv run ruff check app tests
+      - name: Test ML cache service
+        run: cd ml && uv run pytest tests
 
   frontend:
     runs-on: ubuntu-latest

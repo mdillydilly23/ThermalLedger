@@ -1,13 +1,23 @@
-FROM node:20-slim
+# Multi-stage build: compile with Node, serve with nginx (production-grade).
+# The Vite dev server is NOT used in this image — see ADR-005 note.
+
+FROM node:20-slim AS builder
 
 WORKDIR /app
 
-# package-lock.json is committed, so use npm's reproducible installer rather
-# than requiring a pnpm lockfile that is not part of this repository.
+# Install dependencies first for better layer caching.
 COPY package.json package-lock.json ./
 RUN npm ci
 
+# Build the production bundle.
 COPY . .
+RUN npm run build
 
-EXPOSE 5173
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+# ── Production image ────────────────────────────────────────────────────────
+FROM nginx:alpine
+
+COPY --from=builder /app/dist /usr/share/nginx/html
+COPY infra/nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

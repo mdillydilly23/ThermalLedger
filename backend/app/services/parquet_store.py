@@ -50,7 +50,10 @@ def get_facility_summaries() -> list[dict]:
     """
     Return all facilities joined with their latest EVS score.
     Shape matches FacilitySummary in api_models.py.
+    Returns an empty list if the fixture files are missing (graceful degradation).
     """
+    if not _facilities_path().exists() or not _scores_path().exists():
+        return []
     fac = _load_facilities()
     scores = _load_scores()[["facility_id", "evs", "flag"]].rename(
         columns={"evs": "latest_evs", "flag": "latest_flag"}

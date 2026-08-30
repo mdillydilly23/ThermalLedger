@@ -1,6 +1,6 @@
 {
   "filename": "demo_esg.pdf",
-  "granite_model_id": "ibm/granite-13b-instruct-v2",
+  "granite_model_id": "ibm/granite-3-8b-instruct",
   "cached": true,
   "claims": [
     {

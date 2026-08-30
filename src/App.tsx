@@ -1,6 +1,7 @@
 /**
  * App.tsx — root layout.
  * Two tabs: Dashboard (map + detail panel) and Upload (ESG PDF → report).
+ * H-2: navigateToFacility lifted here so Upload can switch tab and pre-select a facility.
  */
 
 import { useState } from 'react'
@@ -54,6 +55,13 @@ const styles: Record<string, React.CSSProperties> = {
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('dashboard')
+  const [preSelectedFacility, setPreSelectedFacility] = useState<string | null>(null)
+
+  /** Switches to the Dashboard tab and pre-selects a facility marker. */
+  const navigateToFacility = (facilityId: string) => {
+    setPreSelectedFacility(facilityId)
+    setTab('dashboard')
+  }
 
   return (
     <div style={styles.shell}>
@@ -77,7 +85,16 @@ export default function App() {
         </nav>
       </header>
       <div style={styles.content}>
-        {tab === 'dashboard' ? <DashboardPage /> : tab === 'upload' ? <UploadPage /> : <PrototypePage />}
+        {tab === 'dashboard' ? (
+          <DashboardPage
+            initialFacilityId={preSelectedFacility}
+            onFacilityConsumed={() => setPreSelectedFacility(null)}
+          />
+        ) : tab === 'upload' ? (
+          <UploadPage onNavigateToFacility={navigateToFacility} />
+        ) : (
+          <PrototypePage />
+        )}
       </div>
     </div>
   )

@@ -6,8 +6,9 @@ ADR-006: Granite parsing result served from cache when GRANITE_MODE=cached.
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
+from app.api.deps import require_api_key
 from app.core.celery_app import celery_app
 from app.core.config import settings
 from app.models.api_models import ESGUploadResponse
@@ -16,7 +17,7 @@ router = APIRouter()
 _MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 
 
-@router.post("/upload", response_model=ESGUploadResponse)
+@router.post("/upload", response_model=ESGUploadResponse, dependencies=[Depends(require_api_key)])
 async def upload_esg_pdf(file: UploadFile = File(...)) -> ESGUploadResponse:  # noqa: B008
     """
     Accept a corporate ESG PDF and dispatch Granite parsing as a background task.

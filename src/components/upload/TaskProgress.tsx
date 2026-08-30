@@ -4,10 +4,13 @@
  */
 
 import { useTask } from '../../hooks/useTask'
+import type { ESGClaimMatch } from '../../types/evs'
 
 interface Props {
   taskId: string
   label: string
+  /** Called when a matched facility is clicked — navigates to dashboard with that facility selected. */
+  onNavigateToFacility?: (facilityId: string) => void
 }
 
 const STEPS = [
@@ -16,7 +19,7 @@ const STEPS = [
   { stage: 'Complete', label: 'Parsing complete' },
 ]
 
-export function TaskProgress({ taskId, label }: Props) {
+export function TaskProgress({ taskId, label, onNavigateToFacility }: Props) {
   const task = useTask(taskId)
 
   if (!task) {
@@ -33,7 +36,12 @@ export function TaskProgress({ taskId, label }: Props) {
         {STEPS.map((s, i) => (
           <StatusRow key={i} color="#22c55e" icon="✓" text={s.label} />
         ))}
-        {task.result != null && <ParseResult result={task.result as Record<string, unknown>} />}
+        {task.result != null && (
+          <ParseResult
+            result={task.result as Record<string, unknown>}
+            onNavigateToFacility={onNavigateToFacility}
+          />
+        )}
       </div>
     )
   }
@@ -87,9 +95,15 @@ function StatusRow({
   )
 }
 
-function ParseResult({ result }: { result: Record<string, unknown> }) {
+function ParseResult({
+  result,
+  onNavigateToFacility,
+}: {
+  result: Record<string, unknown>
+  onNavigateToFacility?: (facilityId: string) => void
+}) {
   const claims = result?.claims as unknown[] | undefined
-  const matches = result?.matches as Record<string, unknown>[] | undefined
+  const matches = result?.matches as ESGClaimMatch[] | undefined
   if (!claims?.length) return null
 
   return (
@@ -118,13 +132,34 @@ function ParseResult({ result }: { result: Record<string, unknown> }) {
             Facility Matches
           </div>
           {matches.map((match) => (
-            <div key={String(match.facility_id)} style={{ fontSize: '12px', color: '#94a3b8', paddingBottom: '6px' }}>
-              <strong style={{ color: '#e2e8f0' }}>{String(match.facility_name ?? '—')}</strong>{' '}
-              <span style={{ color: '#60a5fa' }}>
+            <button
+              key={match.facility_id}
+              type="button"
+              onClick={() => onNavigateToFacility?.(match.facility_id)}
+              disabled={!onNavigateToFacility}
+              style={{
+                display: 'block',
+                width: '100%',
+                textAlign: 'left',
+                background: onNavigateToFacility ? 'rgba(96, 165, 250, 0.06)' : 'none',
+                border: onNavigateToFacility ? '1px solid #1e3a5f' : 'none',
+                borderRadius: '5px',
+                padding: '6px 8px',
+                marginBottom: '4px',
+                cursor: onNavigateToFacility ? 'pointer' : 'default',
+                color: 'inherit',
+              }}
+              title={onNavigateToFacility ? `View ${match.facility_name} on the map` : undefined}
+            >
+              <span style={{ color: '#e2e8f0', fontSize: '12px', fontWeight: 600 }}>{match.facility_name ?? '—'}</span>{' '}
+              <span style={{ color: '#60a5fa', fontSize: '12px' }}>
                 EVS {match.latest_evs != null ? Number(match.latest_evs).toFixed(1) : '—'}
               </span>{' '}
-              <span style={{ color: '#64748b' }}>{String(match.latest_flag ?? 'unscored')}</span>
-            </div>
+              <span style={{ color: '#64748b', fontSize: '12px' }}>{match.latest_flag ?? 'unscored'}</span>
+              {onNavigateToFacility && (
+                <span style={{ color: '#3b82f6', fontSize: '11px', marginLeft: '6px' }}>→ View on map</span>
+              )}
+            </button>
           ))}
         </div>
       ) : null}

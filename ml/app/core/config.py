@@ -31,7 +31,7 @@ class MLSettings(BaseSettings):
     watsonx_api_key: str = ""
     watsonx_project_id: str = ""
     watsonx_url: str = "https://us-south.ml.cloud.ibm.com"
-    granite_model_id: str = "ibm/granite-13b-instruct-v2"
+    granite_model_id: str = "ibm/granite-3-8b-instruct"
 
     ml_host: str = "0.0.0.0"
     ml_port: int = 8001

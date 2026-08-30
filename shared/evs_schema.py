@@ -43,6 +43,9 @@ class EVSScore(BaseModel):
     coverage_pct: float = Field(
         ..., ge=0.0, le=100.0, description="% of window days with valid retrievals"
     )
+    total_days: int = Field(
+        0, description="Total calendar days in the observation window"
+    )
 
     # ── Satellite-derived estimate ────────────────────────────
     satellite_ch4_estimate: float = Field(

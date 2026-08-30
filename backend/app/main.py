@@ -15,12 +15,20 @@ from app.core.config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: validate data directory exists when DATA_SOURCE=local
-    if settings.data_source == "local" and not settings.data_dir.exists():
-        raise RuntimeError(
-            f"DATA_SOURCE=local but data directory not found: {settings.data_dir}\n"
-            "Run scripts/download_sentinel5p.py and scripts/seed_facilities.py first."
-        )
+    # Startup: validate data directory and required Parquet fixtures when DATA_SOURCE=local
+    if settings.data_source == "local":
+        if not settings.data_dir.exists():
+            raise RuntimeError(
+                f"DATA_SOURCE=local but data directory not found: {settings.data_dir}\n"
+                "Run scripts/download_sentinel5p.py and scripts/seed_facilities.py first."
+            )
+        for parquet in ("facilities.parquet", "evs_scores.parquet"):
+            p = settings.data_dir / "processed" / parquet
+            if not p.exists():
+                raise RuntimeError(
+                    f"Required fixture missing: {p}\n"
+                    "Run scripts/write_demo_parquet.py to generate the demo fixtures."
+                )
     yield
     # Shutdown: nothing to clean up
 
@@ -34,9 +42,10 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Vite dev server
+    allow_origins=settings.allowed_origins,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True,
 )
 
 app.include_router(facilities.router, prefix="/facilities", tags=["facilities"])

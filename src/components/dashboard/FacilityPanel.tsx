@@ -71,7 +71,7 @@ function EVSDetail({ score }: { score: EVSScore }) {
       <Section title="Observation Window">
         <Row label="Start" value={score.observation_start} />
         <Row label="End" value={score.observation_end} />
-        <Row label="Coverage" value={`${score.coverage_pct.toFixed(1)}% (${score.days_with_valid_retrievals}/${Math.round(score.coverage_pct > 0 ? score.days_with_valid_retrievals / (score.coverage_pct / 100) : 0)} days)`} />
+        <Row label="Coverage" value={`${score.coverage_pct.toFixed(1)}% (${score.days_with_valid_retrievals}/${score.total_days > 0 ? score.total_days : Math.round(score.coverage_pct > 0 ? score.days_with_valid_retrievals / (score.coverage_pct / 100) : 0)} days)`} />
       </Section>
 
       <Section title="Satellite Estimate (CH₄ t/yr)">
@@ -159,11 +159,23 @@ function VerificationReport({ score }: { score: EVSScore }) {
                 <span style={{ color: '#60a5fa', wordBreak: 'break-all' }}>{result.blockchain_tx_id}</span>
               </p>
             )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '4px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const blob = new Blob([result.report_html!], { type: 'text/html' })
+                  window.open(URL.createObjectURL(blob))
+                }}
+                style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', fontSize: '11px', textDecoration: 'underline', padding: 0 }}
+              >
+                Open full report ↗
+              </button>
+            </div>
             <iframe
               title={`Verification report for ${score.facility_name}`}
               srcDoc={result.report_html}
               sandbox=""
-              style={{ width: '100%', height: '230px', border: '1px solid #2d3148', borderRadius: '5px', background: '#fff' }}
+              style={{ width: '100%', height: '420px', border: '1px solid #2d3148', borderRadius: '5px', background: '#fff' }}
             />
           </>
         )}

@@ -129,6 +129,7 @@ def main() -> None:
             "observation_end": OBS_END.isoformat(),
             "days_with_valid_retrievals": days_valid,
             "coverage_pct": round(days_valid / TOTAL_DAYS * 100, 1),
+            "total_days": TOTAL_DAYS,
             "satellite_ch4_estimate": est,
             "satellite_uncertainty_low": low,
             "satellite_uncertainty_high": high,

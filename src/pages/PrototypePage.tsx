@@ -7,7 +7,7 @@ import type { DiscrepancyFlag } from '../types/evs'
 
 export function PrototypePage() {
   const queryClient = useQueryClient()
-  const [selectedFacility, setSelectedFacility] = useState('EPA-GHGRP-TX-001')
+  const [selectedFacility, setSelectedFacility] = useState('all')
   const [startDate, setStartDate] = useState('2024-06-01')
   const [endDate, setEndDate] = useState('2024-06-30')
   const [reuseRaw, setReuseRaw] = useState(true)
@@ -90,9 +90,37 @@ export function PrototypePage() {
             <input checked={reuseRaw} onChange={(event) => setReuseRaw(event.target.checked)} type="checkbox" />
             Reuse downloaded raw data
           </label>
-          <button type="button" onClick={runVerification} style={styles.primaryButton}>
-            Start live verification
-          </button>
+          {(() => {
+            const canRunLive = reuseRaw
+              ? (status?.data.sentinel_raw_count ?? 0) > 0
+              : !!(status?.credentials.copernicus && status?.credentials.cds)
+            const disabledReason = !canRunLive
+              ? reuseRaw
+                ? 'No raw Sentinel data present. Uncheck "Reuse downloaded raw data" and add Copernicus credentials to download.'
+                : 'Copernicus and CDS credentials are required to download live Sentinel data. Add them to your .env file.'
+              : undefined
+            return (
+              <div title={disabledReason}>
+                <button
+                  type="button"
+                  onClick={runVerification}
+                  disabled={!canRunLive}
+                  style={{
+                    ...styles.primaryButton,
+                    opacity: canRunLive ? 1 : 0.45,
+                    cursor: canRunLive ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  Start live verification
+                </button>
+                {disabledReason && (
+                  <p style={{ marginTop: '6px', color: '#fcd34d', fontSize: '11px', lineHeight: 1.5 }}>
+                    {disabledReason}
+                  </p>
+                )}
+              </div>
+            )
+          })()}
           {requestError && <p style={styles.error}>{requestError}</p>}
           {taskId && <TaskRunStatus taskId={taskId} task={task} />}
         </section>

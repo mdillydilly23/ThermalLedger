@@ -17,6 +17,13 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    # CORS — override with a comma-separated list or "*" for open deployments
+    allowed_origins: list[str] = ["http://localhost:5173"]
+
+    # Demo API key — set to a non-empty value to guard mutating endpoints.
+    # Use DEMO_API_KEY=thermalledger-demo in production .env deployments.
+    demo_api_key: str = ""
+
     # ADR-002
     data_source: Literal["local", "remote"] = "local"
     data_dir: Path = Path("../data")

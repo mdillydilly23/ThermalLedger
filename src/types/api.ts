@@ -311,6 +311,12 @@ export interface components {
              */
             coverage_pct: number;
             /**
+             * Total Days
+             * @description Total calendar days in the observation window
+             * @default 0
+             */
+            total_days: number;
+            /**
              * Satellite Ch4 Estimate
              * @description Satellite-derived CH4, tonnes/year (30-day temporal ensemble)
              */

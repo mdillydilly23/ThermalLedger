@@ -14,10 +14,11 @@ import { evsFlagToRGB } from '../../types/evs'
 // ADR-005: CARTO dark-matter tiles — free, unlimited, visually strong for EVS color coding
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
 
+// World overview — shows all 15 facilities (US and European portfolio)
 const INITIAL_VIEW = {
-  longitude: -103.0,   // Permian Basin, Texas
-  latitude: 31.5,
-  zoom: 7,
+  longitude: -20.0,
+  latitude: 45.0,
+  zoom: 2.5,
   pitch: 0,
   bearing: 0,
 }

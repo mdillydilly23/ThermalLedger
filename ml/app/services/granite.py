@@ -88,19 +88,26 @@ ESG report text:
         Returns: dict with report_html and report_id.
         """
         if self._mode == "cached":
-            return self._load_cached_report(facility_id)
+            return self._load_cached_report(facility_id, evs_data)
         return await self._live_generate_report(facility_id, evs_data)
 
-    def _load_cached_report(self, facility_id: str) -> dict[str, Any]:
+    def _load_cached_report(self, facility_id: str, evs_data: dict | None = None) -> dict[str, Any]:
         report_file = self._reports_dir / f"{facility_id}_report.html"
-        if not report_file.exists():
+        # If there is no facility-specific file, render directly from EVS data
+        # so every facility gets a meaningful report instead of generic boilerplate.
+        if not report_file.exists() and evs_data:
+            report_html = _render_evs_report(evs_data, facility_id)
+        elif not report_file.exists():
             report_file = self._reports_dir / "hero_facility_report.html"
-        with open(report_file) as f:
-            html = f.read()
+            with open(report_file) as f:
+                report_html = f.read()
+        else:
+            with open(report_file) as f:
+                report_html = f.read()
         return {
             "report_id": f"cached_{facility_id}",
             "facility_id": facility_id,
-            "report_html": html,
+            "report_html": report_html,
             "cached": True,
             "blockchain_tx_id": None,  # anchored separately by backend
         }
@@ -245,3 +252,69 @@ def _normalise_report_html(generated: str, facility_id: str, evs_data: dict[str,
   </body>
 </html>
 """
+
+
+def _render_evs_report(evs_data: dict[str, Any], facility_id: str) -> str:
+    """Render a facility-specific HTML report directly from EVS data — zero extra API calls."""
+    flag = str(evs_data.get("flag") or "").lower()
+    flag_color = {"high": "#ef4444", "watch": "#f59e0b", "clear": "#22c55e"}.get(flag, "#888888")
+    flag_label = {"high": "HIGH — Significant discrepancy", "watch": "WATCH — Possible under-reporting", "clear": "CLEAR — Within tolerance"}.get(flag, flag.upper() or "UNSCORED")
+    facility_name = html.escape(str(evs_data.get("facility_name") or facility_id))
+    evs_score = evs_data.get("evs")
+    evs_display = f"{float(evs_score):.1f}" if evs_score is not None else "—"
+    sat_ch4 = evs_data.get("satellite_ch4_estimate")
+    sat_display = f"{float(sat_ch4):,.0f} t/yr" if sat_ch4 is not None else "—"
+    reported_ch4 = evs_data.get("reported_ch4")
+    reported_display = f"{float(reported_ch4):,.0f} t/yr" if reported_ch4 is not None else "Not disclosed"
+    delta_pct = evs_data.get("delta_pct")
+    delta_display = (f"{float(delta_pct):+.1f}%") if delta_pct is not None else "—"
+    obs_start = html.escape(str(evs_data.get("observation_start") or "—"))
+    obs_end = html.escape(str(evs_data.get("observation_end") or "—"))
+    coverage = evs_data.get("coverage_pct")
+    coverage_display = f"{float(coverage):.1f}%" if coverage is not None else "—"
+    reported_source = html.escape(str(evs_data.get("reported_source") or "—"))
+    reported_year = evs_data.get("reported_year")
+
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>ThermalLedger Verification Report — {facility_name}</title>
+  <style>
+    body {{ font-family: Arial, sans-serif; color: #172033; margin: 24px; line-height: 1.45; font-size: 13px; }}
+    h1 {{ color: #123c6b; font-size: 18px; margin-bottom: 2px; }}
+    h2 {{ font-size: 13px; margin: 18px 0 6px; color: #285f91; text-transform: uppercase; letter-spacing: 0.04em; }}
+    .evs {{ display: inline-block; font-size: 28px; font-weight: 800; color: {flag_color}; }}
+    .flag {{ display: inline-block; background: {flag_color}22; color: {flag_color}; border-radius: 12px; padding: 3px 10px; font-size: 11px; font-weight: bold; margin-left: 10px; vertical-align: middle; }}
+    table {{ border-collapse: collapse; width: 100%; }}
+    td {{ padding: 5px 8px; border-bottom: 1px solid #e5e7eb; font-size: 12px; }}
+    td:first-child {{ color: #6b7280; width: 45%; }}
+    .note {{ background: #edf5ff; border-left: 3px solid #3b82f6; padding: 9px; font-size: 11px; color: #374151; margin-top: 18px; }}
+  </style>
+</head>
+<body>
+  <h1>{facility_name}</h1>
+  <p style="color:#6b7280;font-size:11px;margin:2px 0 16px">Facility ID: {html.escape(facility_id)}</p>
+
+  <h2>Emission Verification Score</h2>
+  <div><span class="evs">{evs_display}</span><span class="flag">{flag_label}</span></div>
+
+  <h2>Observation Window</h2>
+  <table>
+    <tr><td>Start</td><td>{obs_start}</td></tr>
+    <tr><td>End</td><td>{obs_end}</td></tr>
+    <tr><td>Coverage</td><td>{coverage_display}</td></tr>
+  </table>
+
+  <h2>Satellite Estimate vs. Reported</h2>
+  <table>
+    <tr><td>Satellite CH₄ estimate</td><td><strong>{sat_display}</strong></td></tr>
+    <tr><td>Reported CH₄ (Scope 1)</td><td>{reported_display}</td></tr>
+    <tr><td>Discrepancy (delta)</td><td style="color:{flag_color};font-weight:600">{delta_display}</td></tr>
+    <tr><td>Reported source</td><td>{reported_source}</td></tr>
+    <tr><td>Reporting year</td><td>{html.escape(str(reported_year)) if reported_year else "—"}</td></tr>
+  </table>
+
+  <p class="note">Demonstration prototype — this report is generated from pre-computed EVS fixture data and is not a live satellite retrieval or a legal attestation.</p>
+</body>
+</html>"""

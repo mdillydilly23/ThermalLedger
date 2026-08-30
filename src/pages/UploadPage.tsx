@@ -2,6 +2,7 @@
  * UploadPage — ESG PDF upload flow with live task progress.
  * ADR-001: POST /esg/upload returns task_id, then polls GET /tasks/{id}.
  * ADR-006: In demo mode (GRANITE_MODE=cached) task completes instantly from cache.
+ * H-4: upload state persisted to sessionStorage so tab-switching does not lose results.
  */
 
 import { useState } from 'react'
@@ -10,20 +11,55 @@ import { ESGDropzone } from '../components/upload/ESGDropzone'
 import { TaskProgress } from '../components/upload/TaskProgress'
 import { fetchPrototypeStatus } from '../lib/api'
 
+const SESSION_KEY = 'thermalledger_upload_state'
+
 interface UploadState {
   taskId: string
   filename: string
 }
 
-export function UploadPage() {
-  const [upload, setUpload] = useState<UploadState | null>(null)
+function readSession(): UploadState | null {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY)
+    return raw ? (JSON.parse(raw) as UploadState) : null
+  } catch {
+    return null
+  }
+}
+
+function writeSession(state: UploadState | null) {
+  try {
+    if (state) {
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(state))
+    } else {
+      sessionStorage.removeItem(SESSION_KEY)
+    }
+  } catch {
+    // sessionStorage may be unavailable in some environments — silently ignore
+  }
+}
+
+interface Props {
+  /** Callback passed down into ParseResult so clicking a matched facility navigates to the map. */
+  onNavigateToFacility?: (facilityId: string) => void
+}
+
+export function UploadPage({ onNavigateToFacility }: Props) {
+  const [upload, setUpload] = useState<UploadState | null>(() => readSession())
   const { data: status } = useQuery({
     queryKey: ['prototype-status'],
     queryFn: fetchPrototypeStatus,
   })
 
   const handleUploadStart = (taskId: string, filename: string) => {
-    setUpload({ taskId, filename })
+    const state: UploadState = { taskId, filename }
+    writeSession(state)
+    setUpload(state)
+  }
+
+  const handleReset = () => {
+    writeSession(null)
+    setUpload(null)
   }
 
   return (
@@ -60,7 +96,8 @@ export function UploadPage() {
         )}
       </div>
 
-      <ESGDropzone onUploadStart={handleUploadStart} />
+      {/* Only show the dropzone when there is no active/completed upload */}
+      {!upload && <ESGDropzone onUploadStart={handleUploadStart} />}
 
       {upload && (
         <div style={{
@@ -69,10 +106,31 @@ export function UploadPage() {
           borderRadius: '10px',
           padding: '16px',
         }}>
-          <div style={{ fontSize: '12px', color: '#475569', marginBottom: '12px' }}>
-            Processing: <span style={{ color: '#94a3b8' }}>{upload.filename}</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <div style={{ fontSize: '12px', color: '#475569' }}>
+              Processing: <span style={{ color: '#94a3b8' }}>{upload.filename}</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleReset}
+              style={{
+                background: 'none',
+                border: '1px solid #2d3148',
+                borderRadius: '5px',
+                color: '#64748b',
+                cursor: 'pointer',
+                fontSize: '11px',
+                padding: '3px 8px',
+              }}
+            >
+              Upload another PDF
+            </button>
           </div>
-          <TaskProgress taskId={upload.taskId} label="ESG parse" />
+          <TaskProgress
+            taskId={upload.taskId}
+            label="ESG parse"
+            onNavigateToFacility={onNavigateToFacility}
+          />
         </div>
       )}
 

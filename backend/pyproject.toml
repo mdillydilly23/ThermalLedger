@@ -13,15 +13,12 @@ dependencies = [
     "redis>=5.0.0",
     "python-dotenv>=1.0.0",
     "python-multipart>=0.0.9",
-    "ibm-watson>=8.1.0",
-    "ibm-platform-services>=0.53.0",
     # Data access
     "pandas>=2.2.0",
     "pyarrow>=16.0.0",
     # Phase 1 — data ingestion
     "requests>=2.32.0",
     "cdsapi>=0.7.0",
-    "sqlalchemy>=2.0.0",
 ]
 
 [tool.uv]
