@@ -63,7 +63,7 @@ services:
     build:
       context: ..
       dockerfile: backend/Dockerfile
-    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=4
+    command: uv run --no-sync celery -A app.core.celery_app worker --loglevel=info --concurrency=4
     restart: unless-stopped
     volumes:
       - ../data:/app/data            # Ingestion tasks may write downloaded data
