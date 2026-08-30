@@ -15,6 +15,10 @@ import type {
 
 const BASE = '/api'  // proxied to backend:8000 by Vite (vite.config.ts)
 
+// Demo API key — matches DEMO_API_KEY in .env / backend/app/api/deps.py.
+// Falls back to the well-known demo value so local dev works without extra setup.
+const API_KEY = (import.meta.env.VITE_DEMO_API_KEY as string | undefined) ?? 'thermalledger-demo'
+
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`)
   if (!res.ok) throw new Error(`GET ${path} → ${res.status}`)
@@ -24,7 +28,10 @@ async function get<T>(path: string): Promise<T> {
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Api-Key': API_KEY,
+    },
     body: JSON.stringify(body),
   })
   if (!res.ok) throw new Error(`POST ${path} → ${res.status}`)
@@ -62,7 +69,11 @@ export const fetchPlumeGeoJSON = (facilityId: string, date: string): Promise<Plu
 export async function uploadESGPdf(file: File): Promise<{ task_id: string; filename: string }> {
   const form = new FormData()
   form.append('file', file)
-  const res = await fetch(`${BASE}/esg/upload`, { method: 'POST', body: form })
+  const res = await fetch(`${BASE}/esg/upload`, {
+    method: 'POST',
+    headers: { 'X-Api-Key': API_KEY },
+    body: form,
+  })
   if (!res.ok) throw new Error(`ESG upload failed: ${res.status}`)
   return res.json()
 }

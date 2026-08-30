@@ -11,9 +11,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `ErrorBoundary` class component wrapping the full React tree in `src/main.tsx` — prevents blank white screen on unhandled render errors.
 - Exponential backoff (capped at 30 s) for task-poll retries in `src/hooks/useTask.ts`.
 - This `CHANGELOG.md` to document project progression.
+- `src/vite-env.d.ts` — Vite client type reference file; declares `VITE_DEMO_API_KEY` on `ImportMetaEnv` so `import.meta.env` is correctly typed under `tsc`.
 
 ### Fixed
 - Removed spurious `_load_facilities.cache_clear()` call in `parquet_store.upsert_evs_scores` — the facilities Parquet is only written by seeding scripts, not EVS upserts.
+- `POST /reports/generate` (and all other guarded mutating endpoints) returned `401 Unauthorized` because the frontend never attached the `X-Api-Key` header required by `backend/app/api/deps.require_api_key`. Fixed by reading the key from `VITE_DEMO_API_KEY` (falling back to `thermalledger-demo`) and sending it on every `post()` call and the `uploadESGPdf` multipart request in `src/lib/api.ts`.
 
 ### Removed
 - Untracked all committed Python bytecode files (`__pycache__/*.pyc`) from version control. These are auto-generated build artifacts already covered by `.gitignore` and should not be version-controlled.
