@@ -1,0 +1,16 @@
+{
+  "filename": "demo_esg.pdf",
+  "granite_model_id": "ibm/granite-3-8b-instruct",
+  "cached": true,
+  "claims": [
+    {
+      "company_name": "Demo Energy Corp",
+      "reporting_year": 2023,
+      "scope1_ch4_tonnes": 12000,
+      "scope1_co2e_tonnes": 310000,
+      "measurement_methodology": "Engineering estimates based on emission factors",
+      "third_party_verified": false,
+      "source_page": 42
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+.git
+.env
+.venv
+node_modules
+dist
+__pycache__
+*.py[cod]
+data/raw
+data/esg_pdfs
+era5
+processed
+fixtures

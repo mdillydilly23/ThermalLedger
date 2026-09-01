@@ -1,0 +1,103 @@
+services:
+
+  # ── Redis (Celery broker + result backend) ─────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  # ── ML service ─────────────────────────────────────────────
+  ml:
+    build:
+      context: ..
+      dockerfile: ml/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    volumes:
+      - ../data:/app/data:ro         # Demo fixtures and optional satellite data
+      - ../ml/cache:/app/cache:ro    # Deterministic Granite demo cache
+    env_file: ../.env
+    environment:
+      - DATA_DIR=/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── Backend service ────────────────────────────────────────
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../data:/app/data            # Uploads, live EVS, plumes, and audit fallback are persisted here
+      - ../ml/cache:/app/ml_cache:ro
+    env_file: ../.env
+    environment:
+      - DATA_DIR=/app/data
+      - ML_SERVICE_URL=http://ml:8001
+      - REPORTS_CACHE_DIR=/app/ml_cache/reports
+      - UPLOADS_DIR=/app/data/uploads/esg
+      - AUDIT_DIR=/app/data/audit
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    depends_on:
+      redis:
+        condition: service_started
+      ml:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ── Celery worker (runs backend tasks) ─────────────────────
+  worker:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    command: uv run --no-sync celery -A app.core.celery_app worker --loglevel=info --concurrency=4
+    restart: unless-stopped
+    volumes:
+      - ../data:/app/data            # Ingestion tasks may write downloaded data
+      - ../ml/cache:/app/ml_cache:ro
+    env_file: ../.env
+    environment:
+      - DATA_DIR=/app/data
+      - ML_SERVICE_URL=http://ml:8001
+      - UPLOADS_DIR=/app/data/uploads/esg
+      - AUDIT_DIR=/app/data/audit
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    healthcheck:
+      test: ["CMD", "uv", "run", "--no-sync", "celery",
+             "-A", "app.core.celery_app", "inspect", "ping",
+             "-d", "celery@$$HOSTNAME"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    depends_on:
+      redis:
+        condition: service_started
+      ml:
+        condition: service_healthy
+
+  # ── Frontend (nginx, production build) ────────────────────
+  frontend:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
